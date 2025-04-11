@@ -40,6 +40,10 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+	testImplementation("io.jsonwebtoken:jjwt-api:0.11.5")
+    testRuntimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
+    testRuntimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
 }
 
 tasks.withType<Test> {
