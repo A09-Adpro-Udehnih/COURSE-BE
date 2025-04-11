@@ -1,12 +1,13 @@
 package com.example.coursebe.repository;
 
-import com.example.coursebe.model.Course;
-import com.example.coursebe.model.Section;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.UUID;
+import com.example.coursebe.model.Course;
+import com.example.coursebe.model.Section;
 
 /**
  * Repository interface for Section entity
