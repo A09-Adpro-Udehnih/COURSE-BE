@@ -57,23 +57,18 @@ public class ArticleServiceImpl implements ArticleService {
         if (optionalSection.isEmpty()) {
             return null;
         }
-        
         Section section = optionalSection.get();
-        
+
         // If position is null, calculate next position
         if (position == null) {
             List<Article> existingArticles = articleRepository.findBySection(section);
-            position = existingArticles.isEmpty() ? 0 : 
-                      existingArticles.stream()
-                          .mapToInt(Article::getPosition)
-                          .max()
-                          .orElse(-1) + 1;
+            position = existingArticles.size();
         }
-        
+
         // Create and link article
         Article article = new Article(title, content, position);
         article.setSection(section);
-        
+
         // Save and return
         return articleRepository.save(article);
     }
@@ -139,23 +134,25 @@ public class ArticleServiceImpl implements ArticleService {
         if (articleIds == null || articleIds.isEmpty()) {
             throw new IllegalArgumentException("Article IDs list cannot be null or empty");
         }
-        
+
         // Check section exists
         Optional<Section> optionalSection = sectionRepository.findById(sectionId);
         if (optionalSection.isEmpty()) {
             return new ArrayList<>();
         }
-        
         Section section = optionalSection.get();
-        
+
         // Get all articles of the section
         List<Article> articles = articleRepository.findBySection(section);
-        
+
         // Make sure all specified articles belong to the section
-        if (articles.stream().noneMatch(article -> !articleIds.contains(article.getId()))) {
-            throw new IllegalArgumentException("All articles must belong to the specified section");
+        for (UUID id : articleIds) {
+            boolean found = articles.stream().anyMatch(article -> article.getId().equals(id));
+            if (!found) {
+                throw new IllegalArgumentException("All articles must belong to the specified section");
+            }
         }
-        
+
         // Update positions
         List<Article> updatedArticles = new ArrayList<>();
         for (int i = 0; i < articleIds.size(); i++) {
@@ -163,14 +160,12 @@ public class ArticleServiceImpl implements ArticleService {
             Optional<Article> optionalArticle = articles.stream()
                     .filter(a -> a.getId().equals(articleId))
                     .findFirst();
-            
             if (optionalArticle.isPresent()) {
                 Article article = optionalArticle.get();
                 article.setPosition(i);
                 updatedArticles.add(articleRepository.save(article));
             }
         }
-        
         return updatedArticles;
     }
 }

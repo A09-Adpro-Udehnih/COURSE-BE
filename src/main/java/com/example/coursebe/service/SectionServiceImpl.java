@@ -57,23 +57,18 @@ public class SectionServiceImpl implements SectionService {
         if (optionalCourse.isEmpty()) {
             return null;
         }
-        
         Course course = optionalCourse.get();
-        
+
         // If position is null, calculate next position
         if (position == null) {
             List<Section> existingSections = sectionRepository.findByCourse(course);
-            position = existingSections.isEmpty() ? 0 : 
-                       existingSections.stream()
-                           .mapToInt(Section::getPosition)
-                           .max()
-                           .orElse(-1) + 1;
+            position = existingSections.size();
         }
-        
+
         // Create and link section
         Section section = new Section(title, position);
         section.setCourse(course);
-        
+
         // Save and return
         return sectionRepository.save(section);
     }
@@ -135,23 +130,25 @@ public class SectionServiceImpl implements SectionService {
         if (sectionIds == null || sectionIds.isEmpty()) {
             throw new IllegalArgumentException("Section IDs list cannot be null or empty");
         }
-        
+
         // Check course exists
         Optional<Course> optionalCourse = courseRepository.findById(courseId);
         if (optionalCourse.isEmpty()) {
             return new ArrayList<>();
         }
-        
         Course course = optionalCourse.get();
-        
+
         // Get all sections of the course
         List<Section> sections = sectionRepository.findByCourse(course);
-        
+
         // Make sure all specified sections belong to the course
-        if (sections.stream().noneMatch(section -> !sectionIds.contains(section.getId()))) {
-            throw new IllegalArgumentException("All sections must belong to the specified course");
+        for (UUID id : sectionIds) {
+            boolean found = sections.stream().anyMatch(section -> section.getId().equals(id));
+            if (!found) {
+                throw new IllegalArgumentException("All sections must belong to the specified course");
+            }
         }
-        
+
         // Update positions
         List<Section> updatedSections = new ArrayList<>();
         for (int i = 0; i < sectionIds.size(); i++) {
@@ -159,14 +156,12 @@ public class SectionServiceImpl implements SectionService {
             Optional<Section> optionalSection = sections.stream()
                     .filter(s -> s.getId().equals(sectionId))
                     .findFirst();
-            
             if (optionalSection.isPresent()) {
                 Section section = optionalSection.get();
                 section.setPosition(i);
                 updatedSections.add(sectionRepository.save(section));
             }
         }
-        
         return updatedSections;
     }
 }
