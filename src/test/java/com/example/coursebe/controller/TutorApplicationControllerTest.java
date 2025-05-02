@@ -85,4 +85,26 @@ class TutorApplicationControllerTest {
         assertEquals(200, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("No tutor application found"));
     }
+
+    @Test
+    @DisplayName("DELETE /tutors/registration - success")
+    void deleteTutorRegistration_success() {
+        when(tutorApplicationService.deleteApplicationByStudentId(studentId)).thenReturn(true);
+
+        ResponseEntity<?> response = controller.deleteTutorRegistration(principal);
+        assertEquals(200, response.getStatusCodeValue());
+        assertTrue(response.getBody().toString().contains("deleted successfully"));
+        verify(tutorApplicationService).deleteApplicationByStudentId(studentId);
+    }
+
+    @Test
+    @DisplayName("DELETE /tutors/registration - not found")
+    void deleteTutorRegistration_notFound() {
+        when(tutorApplicationService.deleteApplicationByStudentId(studentId)).thenReturn(false);
+
+        ResponseEntity<?> response = controller.deleteTutorRegistration(principal);
+        assertEquals(404, response.getStatusCodeValue());
+        assertTrue(response.getBody().toString().contains("No tutor application found"));
+        verify(tutorApplicationService).deleteApplicationByStudentId(studentId);
+    }
 }
