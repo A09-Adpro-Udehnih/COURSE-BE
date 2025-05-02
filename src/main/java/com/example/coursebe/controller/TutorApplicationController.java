@@ -61,4 +61,23 @@ public class TutorApplicationController {
         }
         return ResponseEntity.ok(resp);
     }
+
+    // DELETE /tutors/registration
+    @DeleteMapping
+    public ResponseEntity<?> deleteTutorRegistration(Principal principal) {
+        UUID studentId = UUID.fromString(principal.getName());
+        boolean deleted = tutorApplicationService.deleteApplicationByStudentId(studentId);
+        Map<String, Object> resp = new HashMap<>();
+        if (deleted) {
+            resp.put("code", HttpStatus.OK.value());
+            resp.put("success", true);
+            resp.put("message", "Tutor application deleted successfully.");
+            return ResponseEntity.ok(resp);
+        } else {
+            resp.put("code", HttpStatus.NOT_FOUND.value());
+            resp.put("success", false);
+            resp.put("message", "No tutor application found to delete.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
+        }
+    }
 }
