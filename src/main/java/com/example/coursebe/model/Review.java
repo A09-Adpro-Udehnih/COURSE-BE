@@ -33,4 +33,20 @@ public class Review {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setRating(int rating) {
+        if (rating < 1 || rating > 5) throw new IllegalArgumentException("Rating must be between 1 and 5");
+        this.rating = rating;
+    }
 }
