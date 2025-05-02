@@ -66,4 +66,11 @@ public interface TutorApplicationService {
      * @return true if deleted, false if not found
      */
     boolean deleteApplication(UUID id);
+    
+    /**
+     * Delete the most recent application by studentId
+     * @param studentId Student ID
+     * @return true if deleted, false if not found
+     */
+    boolean deleteApplicationByStudentId(UUID studentId);
 }

@@ -161,4 +161,18 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         
         return false;
     }
+
+    @Override
+    @Transactional
+    public boolean deleteApplicationByStudentId(UUID studentId) {
+        if (studentId == null) {
+            throw new IllegalArgumentException("Student ID cannot be null");
+        }
+        Optional<TutorApplication> appOpt = tutorApplicationRepository.findTopByStudentIdOrderByCreatedAtDesc(studentId);
+        if (appOpt.isPresent()) {
+            tutorApplicationRepository.deleteById(appOpt.get().getId());
+            return true;
+        }
+        return false;
+    }
 }
