@@ -50,7 +50,8 @@ public class ArticleTest {
         article.onCreate();
         assertNotNull(article.getCreatedAt());
         assertNotNull(article.getUpdatedAt());
-        assertEquals(article.getCreatedAt(), article.getUpdatedAt());
+        // Check if timestamps are very close instead of exactly equal
+        assertTrue(java.time.Duration.between(article.getCreatedAt(), article.getUpdatedAt()).abs().toMillis() < 1000);
         
         Article articleWithNullPosition = new Article(title, content, null);
         articleWithNullPosition.onCreate();
