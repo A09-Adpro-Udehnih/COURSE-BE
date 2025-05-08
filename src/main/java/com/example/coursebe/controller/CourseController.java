@@ -74,4 +74,40 @@ public class CourseController {
         resp.put("courses", courses);
         return ResponseEntity.ok(resp);
     }
+
+    // DELETE /courses/{courseId}
+    @DeleteMapping("/{courseId}")
+    public ResponseEntity<?> deleteCourse(@PathVariable UUID courseId, Principal principal) {
+        UUID tutorId = UUID.fromString(principal.getName());
+        // Validasi: hanya tutor yang memiliki kursus dan status ACCEPTED yang bisa hapus
+        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
+        if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.FORBIDDEN.value());
+            resp.put("success", false);
+            resp.put("message", "You are not allowed to delete this course. Tutor application must be ACCEPTED.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+        }
+        var courseOpt = courseService.getCourseById(courseId);
+        if (courseOpt.isEmpty() || !courseOpt.get().getTutorId().equals(tutorId)) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.FORBIDDEN.value());
+            resp.put("success", false);
+            resp.put("message", "You are not allowed to delete this course. Only the owner can delete.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+        }
+        boolean deleted = courseService.deleteCourse(courseId);
+        Map<String, Object> resp = new HashMap<>();
+        if (deleted) {
+            resp.put("code", HttpStatus.OK.value());
+            resp.put("success", true);
+            resp.put("message", "Course deleted successfully.");
+            return ResponseEntity.ok(resp);
+        } else {
+            resp.put("code", HttpStatus.NOT_FOUND.value());
+            resp.put("success", false);
+            resp.put("message", "Course not found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
+        }
+    }
 }
