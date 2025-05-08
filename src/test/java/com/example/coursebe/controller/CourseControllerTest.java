@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -89,5 +90,61 @@ class CourseControllerTest {
         assertEquals(403, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).createCourse(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("GET /courses/mine - success (ACCEPTED tutor)")
+    void getMyCourses_success() {
+        TutorApplication app = new TutorApplication(tutorId);
+        app.setStatus(TutorApplication.Status.ACCEPTED);
+        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
+        List<Course> courses = List.of(
+            new Course("Course 1", "Desc 1", tutorId, new BigDecimal("10000")),
+            new Course("Course 2", "Desc 2", tutorId, new BigDecimal("20000"))
+        );
+        when(courseService.getCoursesByTutorId(tutorId)).thenReturn(courses);
+
+        ResponseEntity<?> response = courseController.getMyCourses(principal);
+        assertEquals(200, response.getStatusCodeValue());
+        assertTrue(response.getBody() instanceof java.util.Map);
+        var respMap = (java.util.Map<?,?>) response.getBody();
+        assertTrue((Boolean) respMap.get("success"));
+        assertTrue(respMap.get("courses") instanceof List);
+        List<?> respCourses = (List<?>) respMap.get("courses");
+        assertEquals(2, respCourses.size());
+        // Cek nama course baik jika elemen Course maupun Map hasil serialisasi
+        assertTrue(respCourses.stream().anyMatch(c -> {
+            if (c instanceof java.util.Map<?,?> map) {
+                return "Course 1".equals(map.get("name"));
+            } else if (c instanceof Course courseObj) {
+                return "Course 1".equals(courseObj.getName());
+            }
+            return false;
+        }));
+        verify(courseService).getCoursesByTutorId(tutorId);
+    }
+
+    @Test
+    @DisplayName("GET /courses/mine - forbidden (not ACCEPTED)")
+    void getMyCourses_forbidden() {
+        TutorApplication app = new TutorApplication(tutorId);
+        app.setStatus(TutorApplication.Status.PENDING);
+        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
+
+        ResponseEntity<?> response = courseController.getMyCourses(principal);
+        assertEquals(403, response.getStatusCodeValue());
+        assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
+        verify(courseService, never()).getCoursesByTutorId(any());
+    }
+
+    @Test
+    @DisplayName("GET /courses/mine - forbidden (no tutor application)")
+    void getMyCourses_noTutorApplication() {
+        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.empty());
+
+        ResponseEntity<?> response = courseController.getMyCourses(principal);
+        assertEquals(403, response.getStatusCodeValue());
+        assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
+        verify(courseService, never()).getCoursesByTutorId(any());
     }
 }
