@@ -54,4 +54,24 @@ public class CourseController {
         resp.put("courseId", course.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
+
+    // GET /courses/mine
+    @GetMapping("/mine")
+    public ResponseEntity<?> getMyCourses(Principal principal) {
+        UUID tutorId = UUID.fromString(principal.getName());
+        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
+        if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.FORBIDDEN.value());
+            resp.put("success", false);
+            resp.put("message", "You are not allowed to view courses. Tutor application must be ACCEPTED.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+        }
+        var courses = courseService.getCoursesByTutorId(tutorId);
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("code", HttpStatus.OK.value());
+        resp.put("success", true);
+        resp.put("courses", courses);
+        return ResponseEntity.ok(resp);
+    }
 }
