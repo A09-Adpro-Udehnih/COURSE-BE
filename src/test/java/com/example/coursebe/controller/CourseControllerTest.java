@@ -209,4 +209,68 @@ class CourseControllerTest {
         assertTrue(response.getBody().toString().contains("Only the owner can delete"));
         verify(courseService, never()).deleteCourse(any());
     }
+
+    @Test
+    @DisplayName("GET /courses/{courseId}/students - success (owner & ACCEPTED)")
+    void getEnrolledStudents_success() {
+        UUID courseId = UUID.randomUUID();
+        TutorApplication app = new TutorApplication(tutorId);
+        app.setStatus(TutorApplication.Status.ACCEPTED);
+        Course course = new Course("Course 1", "Desc", tutorId, new BigDecimal("10000"));
+        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
+        when(courseService.getCourseById(courseId)).thenReturn(Optional.of(course));
+        var students = List.of("student1@example.com", "student2@example.com");
+        when(courseService.getEnrolledStudents(courseId)).thenReturn(students);
+
+        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
+        assertEquals(200, response.getStatusCodeValue());
+        assertTrue(response.getBody().toString().contains("students"));
+        assertTrue(response.getBody().toString().contains("student1@example.com"));
+        verify(courseService).getEnrolledStudents(courseId);
+    }
+
+    @Test
+    @DisplayName("GET /courses/{courseId}/students - forbidden (not ACCEPTED)")
+    void getEnrolledStudents_forbidden_notAccepted() {
+        UUID courseId = UUID.randomUUID();
+        TutorApplication app = new TutorApplication(tutorId);
+        app.setStatus(TutorApplication.Status.PENDING);
+        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
+
+        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
+        assertEquals(403, response.getStatusCodeValue());
+        assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
+        verify(courseService, never()).getEnrolledStudents(any());
+    }
+
+    @Test
+    @DisplayName("GET /courses/{courseId}/students - forbidden (not owner)")
+    void getEnrolledStudents_forbidden_notOwner() {
+        UUID courseId = UUID.randomUUID();
+        TutorApplication app = new TutorApplication(tutorId);
+        app.setStatus(TutorApplication.Status.ACCEPTED);
+        Course course = new Course("Course 1", "Desc", UUID.randomUUID(), new BigDecimal("10000")); // different tutorId
+        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
+        when(courseService.getCourseById(courseId)).thenReturn(Optional.of(course));
+
+        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
+        assertEquals(403, response.getStatusCodeValue());
+        assertTrue(response.getBody().toString().contains("Only the owner can view"));
+        verify(courseService, never()).getEnrolledStudents(any());
+    }
+
+    @Test
+    @DisplayName("GET /courses/{courseId}/students - not found")
+    void getEnrolledStudents_notFound() {
+        UUID courseId = UUID.randomUUID();
+        TutorApplication app = new TutorApplication(tutorId);
+        app.setStatus(TutorApplication.Status.ACCEPTED);
+        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
+        when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
+
+        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
+        assertEquals(403, response.getStatusCodeValue());
+        assertTrue(response.getBody().toString().contains("Only the owner can view"));
+        verify(courseService, never()).getEnrolledStudents(any());
+    }
 }
