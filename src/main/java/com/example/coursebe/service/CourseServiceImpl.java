@@ -113,4 +113,15 @@ public class CourseServiceImpl implements CourseService {
         
         return false;
     }
+
+    @Override
+    public List<String> getEnrolledStudents(UUID courseId) {
+        // Ambil course
+        Optional<Course> courseOpt = courseRepository.findById(courseId);
+        if (courseOpt.isEmpty()) return List.of();
+        // Ambil enrollments dari repository
+        // EnrollmentRepository harus diinject
+        // Untuk sekarang, pseudo-code: return enrollmentRepository.findByCourse(courseOpt.get()).stream().map(e -> e.getStudentId().toString()).toList();
+        throw new UnsupportedOperationException("Implementasi getEnrolledStudents harus menginject EnrollmentRepository dan mengembalikan daftar studentId/email.");
+    }
 }

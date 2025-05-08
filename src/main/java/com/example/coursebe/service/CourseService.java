@@ -65,4 +65,11 @@ public interface CourseService {
      * @return true if deleted, false if not found
      */
     boolean deleteCourse(UUID id);
+    
+    /**
+     * Get list of students enrolled in a course
+     * @param courseId Course ID
+     * @return List of students (misal: email, id, atau objek Student)
+     */
+    List<String> getEnrolledStudents(UUID courseId);
 }

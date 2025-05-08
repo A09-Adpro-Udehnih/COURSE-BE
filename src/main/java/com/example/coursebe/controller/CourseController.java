@@ -110,4 +110,33 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
         }
     }
+
+    // GET /courses/{courseId}/students
+    @GetMapping("/{courseId}/students")
+    public ResponseEntity<?> getEnrolledStudents(@PathVariable UUID courseId, Principal principal) {
+        UUID tutorId = UUID.fromString(principal.getName());
+        // Validasi: hanya tutor owner & status ACCEPTED yang bisa akses
+        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
+        if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.FORBIDDEN.value());
+            resp.put("success", false);
+            resp.put("message", "You are not allowed to view students. Tutor application must be ACCEPTED.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+        }
+        var courseOpt = courseService.getCourseById(courseId);
+        if (courseOpt.isEmpty() || !courseOpt.get().getTutorId().equals(tutorId)) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.FORBIDDEN.value());
+            resp.put("success", false);
+            resp.put("message", "You are not allowed to view students. Only the owner can view.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+        }
+        var students = courseService.getEnrolledStudents(courseId);
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("code", HttpStatus.OK.value());
+        resp.put("success", true);
+        resp.put("students", students);
+        return ResponseEntity.ok(resp);
+    }
 }
