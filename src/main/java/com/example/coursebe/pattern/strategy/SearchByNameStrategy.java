@@ -9,7 +9,6 @@ import java.util.List;
 
 @Component("name")
 public class SearchByNameStrategy implements CourseSearchStrategy {
-
     private final CourseRepository courseRepository;
 
     @Autowired
