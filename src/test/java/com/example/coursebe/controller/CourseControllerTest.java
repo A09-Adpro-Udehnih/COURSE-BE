@@ -5,6 +5,7 @@ import com.example.coursebe.model.Course;
 import com.example.coursebe.model.TutorApplication;
 import com.example.coursebe.service.CourseService;
 import com.example.coursebe.service.TutorApplicationService;
+import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,13 +13,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
 import java.security.Principal;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -39,7 +39,230 @@ class CourseControllerTest {
     void setUp() {
         tutorId = UUID.randomUUID();
         principal = mock(Principal.class);
-        when(principal.getName()).thenReturn(tutorId.toString());
+        lenient().when(principal.getName()).thenReturn(tutorId.toString());
+    }
+
+    @Test
+    @DisplayName("GET /courses - should return all courses when no search parameters")
+    void getAllCourses_noSearchParameters() {
+        // Given
+        List<Course> mockCourses = Arrays.asList(
+                new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99")),
+                new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99"))
+        );
+        when(courseService.getAllCourses()).thenReturn(mockCourses);
+
+        // When
+        ResponseEntity<?> response = courseController.getAllCourses(null, null);
+
+        // Then
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(200, responseBody.get("code"));
+        assertEquals(true, responseBody.get("success"));
+        assertNotNull(responseBody.get("courses"));
+        assertEquals(2, ((List<?>) responseBody.get("courses")).size());
+
+        verify(courseService).getAllCourses();
+        verify(courseService, never()).searchCourses(any(), any());
+    }
+
+    @Test
+    @DisplayName("GET /courses?keyword=Java - should search courses by keyword")
+    void getAllCourses_searchByKeyword() {
+        // Given
+        String type = "keyword";
+        String keyword = "Java";
+
+        List<Course> mockCourses = Arrays.asList(
+                new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99"))
+        );
+
+        when(courseService.searchCourses(type, keyword)).thenReturn(mockCourses);
+
+        // When
+        ResponseEntity<?> response = courseController.getAllCourses(type, keyword);
+
+        // Then
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(200, responseBody.get("code"));
+        assertEquals(true, responseBody.get("success"));
+        assertNotNull(responseBody.get("courses"));
+        assertEquals(1, ((List<?>) responseBody.get("courses")).size());
+
+        verify(courseService).searchCourses(type, keyword);
+        verify(courseService, never()).getAllCourses();
+    }
+
+    @Test
+    @DisplayName("GET /courses - should search courses by name")
+    void getAllCourses_searchByName() {
+        // Given
+        String type = "name";
+        String keyword = "Python";
+
+        List<Course> mockCourses = Arrays.asList(
+                new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99"))
+        );
+
+        when(courseService.searchCourses(type, keyword)).thenReturn(mockCourses);
+
+        // When
+        ResponseEntity<?> response = courseController.getAllCourses(type, keyword);
+
+        // Then
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(200, responseBody.get("code"));
+        assertEquals(true, responseBody.get("success"));
+        assertNotNull(responseBody.get("courses"));
+        assertEquals(1, ((List<?>) responseBody.get("courses")).size());
+
+        verify(courseService).searchCourses(type, keyword);
+        verify(courseService, never()).getAllCourses();
+    }
+
+    @Test
+    @DisplayName("GET /courses - should handle empty search results")
+    void getAllCourses_emptySearchResults() {
+        // Given
+        String type = "keyword";
+        String keyword = "Nonexistent";
+
+        when(courseService.searchCourses(type, keyword)).thenReturn(Collections.emptyList());
+
+        // When
+        ResponseEntity<?> response = courseController.getAllCourses(type, keyword);
+
+        // Then
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(200, responseBody.get("code"));
+        assertEquals(true, responseBody.get("success"));
+        assertTrue(((List<?>) responseBody.get("courses")).isEmpty());
+
+        verify(courseService).searchCourses(type, keyword);
+        verify(courseService, never()).getAllCourses();
+    }
+
+    @Test
+    @DisplayName("GET /courses - should handle invalid search type")
+    void getAllCourses_invalidSearchType() {
+        // Given
+        String type = "invalid";
+        String keyword = "Java";
+
+        when(courseService.searchCourses(type, keyword))
+                .thenThrow(new UnsupportedSearchTypeException(type));
+
+        // When
+        ResponseEntity<?> response = courseController.getAllCourses(type, keyword);
+
+        // Then
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+
+        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(400, responseBody.get("code"));
+        assertEquals(false, responseBody.get("success"));
+        assertEquals("Unsupported search type: " + type, responseBody.get("message"));
+
+        verify(courseService).searchCourses(type, keyword);
+        verify(courseService, never()).getAllCourses();
+    }
+
+    @Test
+    @DisplayName("GET /courses - should handle missing keyword")
+    void getAllCourses_missingKeyword() {
+        // Given
+        String type = "keyword";
+        String keyword = null;
+
+        List<Course> mockCourses = Arrays.asList(
+                new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99")),
+                new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99"))
+        );
+
+        when(courseService.getAllCourses()).thenReturn(mockCourses);
+
+        // When
+        ResponseEntity<?> response = courseController.getAllCourses(type, keyword);
+
+        // Then
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(200, responseBody.get("code"));
+        assertEquals(true, responseBody.get("success"));
+        assertEquals(2, ((List<?>) responseBody.get("courses")).size());
+
+        verify(courseService).getAllCourses();
+        verify(courseService, never()).searchCourses(any(), any());
+    }
+
+    @Test
+    @DisplayName("GET /courses/{id} - should return course by ID")
+    void getCourseById_successful() {
+        // Given
+        UUID courseId = UUID.randomUUID();
+        Course mockCourse = new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99"));
+
+        // Use reflection to set ID
+        try {
+            java.lang.reflect.Field field = Course.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(mockCourse, courseId);
+        } catch (Exception e) {
+            fail("Failed to set course ID");
+        }
+
+        when(courseService.getCourseById(courseId)).thenReturn(Optional.of(mockCourse));
+
+        // When
+        ResponseEntity<?> response = courseController.getCourseById(courseId);
+
+        // Then
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(200, responseBody.get("code"));
+        assertEquals(true, responseBody.get("success"));
+        assertNotNull(responseBody.get("course"));
+
+        verify(courseService).getCourseById(courseId);
+    }
+
+    @Test
+    @DisplayName("GET /courses/{id} - should return 404 when course not found")
+    void getCourseById_notFound() {
+        // Given
+        UUID courseId = UUID.randomUUID();
+        when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
+
+        // When
+        ResponseEntity<?> response = courseController.getCourseById(courseId);
+
+        // Then
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+
+        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(404, responseBody.get("code"));
+        assertEquals(false, responseBody.get("success"));
+        assertEquals("Course not found.", responseBody.get("message"));
+
+        verify(courseService).getCourseById(courseId);
     }
 
     @Test
