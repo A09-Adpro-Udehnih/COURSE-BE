@@ -9,7 +9,6 @@ import java.util.List;
 
 @Component("keyword")
 public class SearchByKeywordStrategy implements CourseSearchStrategy {
-
     private final CourseRepository courseRepository;
 
     @Autowired
