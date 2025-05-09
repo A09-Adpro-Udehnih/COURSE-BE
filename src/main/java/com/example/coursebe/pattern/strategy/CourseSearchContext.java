@@ -10,7 +10,6 @@ import java.util.Map;
 
 @Component
 public class CourseSearchContext {
-
     private final Map<String, CourseSearchStrategy> strategies;
 
     @Autowired
@@ -19,6 +18,10 @@ public class CourseSearchContext {
     }
 
     public CourseSearchStrategy getStrategy(String type) {
-        return strategies.getOrDefault(type, strategies.get("keyword"));
+        return strategies.get(type);
+    }
+
+    public boolean isValidStrategy(String type) {
+        return type != null && strategies.containsKey(type);
     }
 }
