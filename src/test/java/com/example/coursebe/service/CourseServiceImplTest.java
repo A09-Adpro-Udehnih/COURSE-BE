@@ -2,6 +2,9 @@ package com.example.coursebe.service;
 
 import com.example.coursebe.model.Course;
 import com.example.coursebe.repository.CourseRepository;
+import com.example.coursebe.pattern.strategy.CourseSearchContext;
+import com.example.coursebe.pattern.strategy.CourseSearchStrategy;
+import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,9 +25,15 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class CourseServiceImplTest {
-
     @Mock
     private CourseRepository courseRepository;
+
+    @Mock
+    private CourseSearchContext courseSearchContext;
+
+    @Mock
+    private CourseSearchStrategy mockSearchStrategy;
+
 
     @InjectMocks
     private CourseServiceImpl courseService;
@@ -123,20 +132,87 @@ public class CourseServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should search courses by name")
-    void searchCoursesByName() {
+    @DisplayName("Should search courses using keyword strategy")
+    void searchCourses_WithKeywordStrategy() {
         // Given
+        String type = "keyword";
         String keyword = "Java";
-        when(courseRepository.findByNameContainingIgnoreCase(keyword))
-            .thenReturn(Arrays.asList(testCourses.get(1)));
-        
+
+        when(courseSearchContext.isValidStrategy(type)).thenReturn(true);
+        when(courseSearchContext.getStrategy(type)).thenReturn(mockSearchStrategy);
+        when(mockSearchStrategy.search(keyword)).thenReturn(Arrays.asList(testCourses.get(1)));
+
         // When
-        List<Course> result = courseService.searchCoursesByName(keyword);
-        
+        List<Course> result = courseService.searchCourses(type, keyword);
+
         // Then
         assertEquals(1, result.size());
         assertEquals("Java Course", result.get(0).getName());
-        verify(courseRepository).findByNameContainingIgnoreCase(keyword);
+        verify(courseSearchContext).isValidStrategy(type);
+        verify(courseSearchContext).getStrategy(type);
+        verify(mockSearchStrategy).search(keyword);
+    }
+
+    @Test
+    @DisplayName("Should search courses using name strategy")
+    void searchCourses_WithNameStrategy() {
+        // Given
+        String type = "name";
+        String keyword = "Test";
+
+        when(courseSearchContext.isValidStrategy(type)).thenReturn(true);
+        when(courseSearchContext.getStrategy(type)).thenReturn(mockSearchStrategy);
+        when(mockSearchStrategy.search(keyword)).thenReturn(Arrays.asList(testCourses.get(0)));
+
+        // When
+        List<Course> result = courseService.searchCourses(type, keyword);
+
+        // Then
+        assertEquals(1, result.size());
+        assertEquals("Test Course", result.get(0).getName());
+        verify(courseSearchContext).isValidStrategy(type);
+        verify(courseSearchContext).getStrategy(type);
+        verify(mockSearchStrategy).search(keyword);
+    }
+
+    @Test
+    @DisplayName("Should throw UnsupportedSearchTypeException when invalid type is provided")
+    void searchCourses_WithInvalidStrategy() {
+        // Given
+        String type = "invalid";
+        String keyword = "Course";
+
+        when(courseSearchContext.isValidStrategy(type)).thenReturn(false);
+
+        // When & Then
+        Exception exception = assertThrows(UnsupportedSearchTypeException.class, () -> {
+            courseService.searchCourses(type, keyword);
+        });
+
+        verify(courseSearchContext).isValidStrategy(type);
+        verify(courseSearchContext, never()).getStrategy(anyString());
+        verify(mockSearchStrategy, never()).search(anyString());
+    }
+
+    @Test
+    @DisplayName("Should handle empty search results")
+    void searchCourses_WithNoResults() {
+        // Given
+        String type = "keyword";
+        String keyword = "Nonexistent";
+
+        when(courseSearchContext.isValidStrategy(type)).thenReturn(true);
+        when(courseSearchContext.getStrategy(type)).thenReturn(mockSearchStrategy);
+        when(mockSearchStrategy.search(keyword)).thenReturn(List.of());
+
+        // When
+        List<Course> result = courseService.searchCourses(type, keyword);
+
+        // Then
+        assertTrue(result.isEmpty());
+        verify(courseSearchContext).isValidStrategy(type);
+        verify(courseSearchContext).getStrategy(type);
+        verify(mockSearchStrategy).search(keyword);
     }
 
     @Test
