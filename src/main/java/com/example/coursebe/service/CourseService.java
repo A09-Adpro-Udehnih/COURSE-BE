@@ -33,11 +33,12 @@ public interface CourseService {
     List<Course> getCoursesByTutorId(UUID tutorId);
     
     /**
-     * Search courses by name (case insensitive)
-     * @param keyword Keyword to search for in course names
+     * Search courses by strategy (case insensitive)
+     * @param type type of search
+     * @param keyword Keyword to search for
      * @return List of matching courses
      */
-    List<Course> searchCoursesByName(String keyword);
+    List<Course> searchCourses(String type, String keyword);
     
     /**
      * Create a new course
