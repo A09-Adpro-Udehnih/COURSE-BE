@@ -1,4 +1,4 @@
-package com.example.coursebe.dto;
+package com.example.coursebe.dto.review;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,8 +1,12 @@
 package com.example.coursebe.controller;
 
+import com.example.coursebe.dto.GlobalResponse;
+import com.example.coursebe.dto.review.ReviewResponse;
 import com.example.coursebe.model.Review;
 import com.example.coursebe.service.ReviewService;
-import com.example.coursebe.dto.ReviewResponse;
+import com.example.coursebe.dto.review.ReviewCreateRequest;
+import com.example.coursebe.dto.review.ReviewUpdateRequest;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/reviews")
@@ -22,7 +28,7 @@ public class ReviewController {
     }
 
     @GetMapping("/course/{courseId}")
-    public ResponseEntity<List<ReviewResponse>> getReviewsByCourseId(
+    public ResponseEntity<GlobalResponse<List<ReviewResponse>>> getReviewsByCourseId(
             @PathVariable UUID courseId,
             @RequestParam(defaultValue = "0") int page
     ) {
@@ -30,48 +36,107 @@ public class ReviewController {
         List<Review> all = reviewService.getReviewsByCourseId(courseId);
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), all.size());
-        if (start > end) return ResponseEntity.ok(List.of());
+        if (start > end) {
+            return ResponseEntity.ok(GlobalResponse.<List<ReviewResponse>>builder()
+                    .code(org.springframework.http.HttpStatus.OK)
+                    .success(true)
+                    .message("No reviews found.")
+                    .data(List.of())
+                    .build());
+        }
         List<ReviewResponse> responses = all.subList(start, end).stream().map(this::toResponse).toList();
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(GlobalResponse.<List<ReviewResponse>>builder()
+                .code(org.springframework.http.HttpStatus.OK)
+                .success(true)
+                .message("Reviews fetched successfully.")
+                .data(responses)
+                .build());
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<ReviewResponse>> getReviewsByUserId(@PathVariable UUID userId) {
+    public ResponseEntity<GlobalResponse<List<ReviewResponse>>> getReviewsByUserId(@PathVariable UUID userId) {
         List<ReviewResponse> responses = reviewService.getReviewsByUserId(userId).stream().map(this::toResponse).toList();
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(GlobalResponse.<List<ReviewResponse>>builder()
+                .code(org.springframework.http.HttpStatus.OK)
+                .success(true)
+                .message("Reviews fetched successfully.")
+                .data(responses)
+                .build());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ReviewResponse> getReviewById(@PathVariable UUID id) {
+    public ResponseEntity<GlobalResponse<ReviewResponse>> getReviewById(@PathVariable UUID id) {
         Optional<Review> review = reviewService.getReviewById(id);
-        return review.map(r -> ResponseEntity.ok(toResponse(r))).orElseGet(() -> ResponseEntity.notFound().build());
+        return review.map(r -> ResponseEntity.ok(GlobalResponse.<ReviewResponse>builder()
+                        .code(org.springframework.http.HttpStatus.OK)
+                        .success(true)
+                        .message("Review found.")
+                        .data(toResponse(r))
+                        .build()))
+                .orElseGet(() -> ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                        .body(GlobalResponse.<ReviewResponse>builder()
+                                .code(org.springframework.http.HttpStatus.NOT_FOUND)
+                                .success(false)
+                                .message("Review not found.")
+                                .data(null)
+                                .build()));
     }
 
     @PostMapping
-    public ResponseEntity<ReviewResponse> createReview(@RequestBody Review review) {
+    public ResponseEntity<GlobalResponse<ReviewResponse>> createReview(@Valid @RequestBody ReviewCreateRequest request) {
         Review created = reviewService.createReview(
-                review.getCourseId(),
-                review.getUserId(),
-                review.getRating(),
-                review.getComment()
+                request.getCourseId(),
+                request.getUserId(),
+                request.getRating(),
+                request.getComment()
         );
-        return ResponseEntity.ok(toResponse(created));
+        return ResponseEntity.ok(GlobalResponse.<ReviewResponse>builder()
+                .code(org.springframework.http.HttpStatus.OK)
+                .success(true)
+                .message("Review created successfully.")
+                .data(toResponse(created))
+                .build());
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ReviewResponse> updateReview(
+    public ResponseEntity<GlobalResponse<ReviewResponse>> updateReview(
             @PathVariable UUID id,
-            @RequestBody Review review
+            @Valid @RequestBody ReviewUpdateRequest request
     ) {
-        Optional<Review> updated = reviewService.updateReview(id, review.getRating(), review.getComment());
-        return updated.map(r -> ResponseEntity.ok(toResponse(r))).orElseGet(() -> ResponseEntity.notFound().build());
+        Optional<Review> updated = reviewService.updateReview(id, request.getRating(), request.getComment());
+        return updated.map(r -> ResponseEntity.ok(GlobalResponse.<ReviewResponse>builder()
+                        .code(org.springframework.http.HttpStatus.OK)
+                        .success(true)
+                        .message("Review updated successfully.")
+                        .data(toResponse(r))
+                        .build()))
+                .orElseGet(() -> ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                        .body(GlobalResponse.<ReviewResponse>builder()
+                                .code(org.springframework.http.HttpStatus.NOT_FOUND)
+                                .success(false)
+                                .message("Review not found.")
+                                .data(null)
+                                .build()));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteReview(@PathVariable UUID id) {
+    public ResponseEntity<GlobalResponse<Void>> deleteReview(@PathVariable UUID id) {
         boolean deleted = reviewService.deleteReview(id);
-        if (deleted) return ResponseEntity.ok().build();
-        return ResponseEntity.notFound().build();
+        if (deleted) {
+            return ResponseEntity.ok(GlobalResponse.<Void>builder()
+                    .code(org.springframework.http.HttpStatus.OK)
+                    .success(true)
+                    .message("Review deleted successfully.")
+                    .data(null)
+                    .build());
+        }
+        return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                .body(GlobalResponse.<Void>builder()
+                        .code(org.springframework.http.HttpStatus.NOT_FOUND)
+                        .success(false)
+                        .message("Review not found.")
+                        .data(null)
+                        .build());
     }
 
     private ReviewResponse toResponse(Review review) {
