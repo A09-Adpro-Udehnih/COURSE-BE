@@ -1,6 +1,7 @@
 package com.example.coursebe.controller;
 
 import com.example.coursebe.exception.UnsupportedSearchTypeException;
+import com.example.coursebe.service.EnrollmentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,16 +14,19 @@ import com.example.coursebe.dto.CreateCourseRequest;
 
 import java.security.Principal;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/courses")
 public class CourseController {
     private final CourseService courseService;
+    private final EnrollmentService enrollmentService;
     private final TutorApplicationService tutorApplicationService;
 
     @Autowired
-    public CourseController(CourseService courseService, TutorApplicationService tutorApplicationService) {
+    public CourseController(CourseService courseService, EnrollmentService enrollmentService, TutorApplicationService tutorApplicationService) {
         this.courseService = courseService;
+        this.enrollmentService = enrollmentService;
         this.tutorApplicationService = tutorApplicationService;
     }
 
@@ -70,6 +74,45 @@ public class CourseController {
         resp.put("success", true);
         resp.put("course", course);
         return ResponseEntity.status(HttpStatus.OK).body(resp);
+    }
+
+    @PostMapping("{id}/enroll")
+    public CompletableFuture<ResponseEntity<?>> enrollCourse(@PathVariable UUID id, Principal principal) {
+        UUID userId = UUID.fromString(principal.getName());
+        var courseOpt = courseService.getCourseById(id);
+
+        if (courseOpt.isEmpty()) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.NOT_FOUND.value());
+            resp.put("success", false);
+            resp.put("message", "Course not found.");
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp));
+        }
+
+        return enrollmentService.enroll(userId, id)
+                .thenApply(enrollment -> {
+                    if (enrollment != null) {
+                        Map<String, Object> resp = new HashMap<>();
+                        resp.put("code", HttpStatus.OK.value());
+                        resp.put("success", true);
+                        resp.put("message", "Successfully enrolled in the course.");
+                        return (ResponseEntity<?>) ResponseEntity.status(HttpStatus.OK).body(resp);
+                    } else {
+                        Map<String, Object> resp = new HashMap<>();
+                        resp.put("code", HttpStatus.BAD_REQUEST.value());
+                        resp.put("success", false);
+                        resp.put("message", "Failed to enroll in the course.");
+                        return (ResponseEntity<?>) ResponseEntity.status(HttpStatus.BAD_REQUEST).body(resp);
+                    }
+                })
+                .exceptionally(ex -> {
+                    Map<String, Object> resp = new HashMap<>();
+                    resp.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
+                    resp.put("success", false);
+                    resp.put("message", "Error enrolling in course: " +
+                            (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(resp);
+                });
     }
 
     // POST /courses
