@@ -1,26 +1,33 @@
 package com.example.coursebe.controller;
 
-import com.example.coursebe.model.Course;
-import com.example.coursebe.model.TutorApplication;
-import com.example.coursebe.service.CourseService;
-import com.example.coursebe.service.TutorApplicationService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.ResponseEntity;
-
 import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
+
+import com.example.coursebe.model.Course;
+import com.example.coursebe.model.TutorApplication;
+import com.example.coursebe.service.CourseService;
+import com.example.coursebe.service.TutorApplicationService;
 
 @ExtendWith(MockitoExtension.class)
 class CourseControllerTest {
@@ -43,68 +50,82 @@ class CourseControllerTest {
 
     @Test
     @DisplayName("POST /courses - success (ACCEPTED tutor)")
-    void createCourse_success() {
+    void createCourse_success() throws ExecutionException, InterruptedException {
         CourseController.CreateCourseRequest req = new CourseController.CreateCourseRequest();
         req.name = "Test Course";
         req.description = "Desc";
         req.price = new BigDecimal("100000");
         TutorApplication app = new TutorApplication(tutorId);
         app.setStatus(TutorApplication.Status.ACCEPTED);
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
+        
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.of(app)));
+        
         Course course = new Course(req.name, req.description, tutorId, req.price);
-        when(courseService.createCourse(req.name, req.description, tutorId, req.price)).thenReturn(course);
+        when(courseService.createCourseAsync(req.name, req.description, tutorId, req.price))
+            .thenReturn(CompletableFuture.completedFuture(course));
 
-        ResponseEntity<?> response = courseController.createCourse(req, principal);
+        ResponseEntity<?> response = courseController.createCourse(req, principal).get();
         assertEquals(201, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("Course created successfully"));
-        verify(courseService).createCourse(req.name, req.description, tutorId, req.price);
+        verify(tutorApplicationService).getMostRecentApplicationByStudentIdAsync(tutorId);
+        verify(courseService).createCourseAsync(req.name, req.description, tutorId, req.price);
     }
 
     @Test
     @DisplayName("POST /courses - forbidden (not ACCEPTED)")
-    void createCourse_forbidden() {
+    void createCourse_forbidden() throws ExecutionException, InterruptedException {
         CourseController.CreateCourseRequest req = new CourseController.CreateCourseRequest();
         req.name = "Test Course";
         req.description = "Desc";
         req.price = new BigDecimal("100000");
         TutorApplication app = new TutorApplication(tutorId);
         app.setStatus(TutorApplication.Status.PENDING);
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
+        
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.of(app)));
 
-        ResponseEntity<?> response = courseController.createCourse(req, principal);
+        ResponseEntity<?> response = courseController.createCourse(req, principal).get();
         assertEquals(403, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
-        verify(courseService, never()).createCourse(any(), any(), any(), any());
+        verify(courseService, never()).createCourseAsync(any(), any(), any(), any());
     }
 
     @Test
     @DisplayName("POST /courses - forbidden (no tutor application)")
-    void createCourse_noTutorApplication() {
+    void createCourse_noTutorApplication() throws ExecutionException, InterruptedException {
         CourseController.CreateCourseRequest req = new CourseController.CreateCourseRequest();
         req.name = "Test Course";
         req.description = "Desc";
         req.price = new BigDecimal("100000");
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.empty());
+        
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.empty()));
 
-        ResponseEntity<?> response = courseController.createCourse(req, principal);
+        ResponseEntity<?> response = courseController.createCourse(req, principal).get();
         assertEquals(403, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
-        verify(courseService, never()).createCourse(any(), any(), any(), any());
+        verify(courseService, never()).createCourseAsync(any(), any(), any(), any());
     }
 
     @Test
     @DisplayName("GET /courses/mine - success (ACCEPTED tutor)")
-    void getMyCourses_success() {
+    void getMyCourses_success() throws ExecutionException, InterruptedException {
         TutorApplication app = new TutorApplication(tutorId);
         app.setStatus(TutorApplication.Status.ACCEPTED);
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
+        
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.of(app)));
+        
         List<Course> courses = List.of(
             new Course("Course 1", "Desc 1", tutorId, new BigDecimal("10000")),
             new Course("Course 2", "Desc 2", tutorId, new BigDecimal("20000"))
         );
-        when(courseService.getCoursesByTutorId(tutorId)).thenReturn(courses);
+        
+        when(courseService.getCoursesByTutorIdAsync(tutorId))
+            .thenReturn(CompletableFuture.completedFuture(courses));
 
-        ResponseEntity<?> response = courseController.getMyCourses(principal);
+        ResponseEntity<?> response = courseController.getMyCourses(principal).get();
         assertEquals(200, response.getStatusCodeValue());
         assertTrue(response.getBody() instanceof java.util.Map);
         var respMap = (java.util.Map<?,?>) response.getBody();
@@ -121,31 +142,35 @@ class CourseControllerTest {
             }
             return false;
         }));
-        verify(courseService).getCoursesByTutorId(tutorId);
+        verify(tutorApplicationService).getMostRecentApplicationByStudentIdAsync(tutorId);
+        verify(courseService).getCoursesByTutorIdAsync(tutorId);
     }
 
     @Test
     @DisplayName("GET /courses/mine - forbidden (not ACCEPTED)")
-    void getMyCourses_forbidden() {
+    void getMyCourses_forbidden() throws ExecutionException, InterruptedException {
         TutorApplication app = new TutorApplication(tutorId);
         app.setStatus(TutorApplication.Status.PENDING);
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
+        
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.of(app)));
 
-        ResponseEntity<?> response = courseController.getMyCourses(principal);
+        ResponseEntity<?> response = courseController.getMyCourses(principal).get();
         assertEquals(403, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
-        verify(courseService, never()).getCoursesByTutorId(any());
+        verify(courseService, never()).getCoursesByTutorIdAsync(any());
     }
 
     @Test
     @DisplayName("GET /courses/mine - forbidden (no tutor application)")
-    void getMyCourses_noTutorApplication() {
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.empty());
+    void getMyCourses_noTutorApplication() throws ExecutionException, InterruptedException {
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.empty()));
 
-        ResponseEntity<?> response = courseController.getMyCourses(principal);
+        ResponseEntity<?> response = courseController.getMyCourses(principal).get();
         assertEquals(403, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
-        verify(courseService, never()).getCoursesByTutorId(any());
+        verify(courseService, never()).getCoursesByTutorIdAsync(any());
     }
 
     @Test
@@ -212,65 +237,83 @@ class CourseControllerTest {
 
     @Test
     @DisplayName("GET /courses/{courseId}/students - success (owner & ACCEPTED)")
-    void getEnrolledStudents_success() {
+    void getEnrolledStudents_success() throws ExecutionException, InterruptedException {
         UUID courseId = UUID.randomUUID();
         TutorApplication app = new TutorApplication(tutorId);
         app.setStatus(TutorApplication.Status.ACCEPTED);
         Course course = new Course("Course 1", "Desc", tutorId, new BigDecimal("10000"));
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
-        when(courseService.getCourseById(courseId)).thenReturn(Optional.of(course));
+        
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.of(app)));
+        
+        when(courseService.getCourseByIdAsync(courseId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.of(course)));
+        
         var students = List.of("student1@example.com", "student2@example.com");
-        when(courseService.getEnrolledStudents(courseId)).thenReturn(students);
+        when(courseService.getEnrolledStudentsAsync(courseId))
+            .thenReturn(CompletableFuture.completedFuture(students));
 
-        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
+        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal).get();
         assertEquals(200, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("students"));
         assertTrue(response.getBody().toString().contains("student1@example.com"));
-        verify(courseService).getEnrolledStudents(courseId);
+        verify(tutorApplicationService).getMostRecentApplicationByStudentIdAsync(tutorId);
+        verify(courseService).getCourseByIdAsync(courseId);
+        verify(courseService).getEnrolledStudentsAsync(courseId);
     }
 
     @Test
     @DisplayName("GET /courses/{courseId}/students - forbidden (not ACCEPTED)")
-    void getEnrolledStudents_forbidden_notAccepted() {
+    void getEnrolledStudents_forbidden_notAccepted() throws ExecutionException, InterruptedException {
         UUID courseId = UUID.randomUUID();
         TutorApplication app = new TutorApplication(tutorId);
         app.setStatus(TutorApplication.Status.PENDING);
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
+        
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.of(app)));
 
-        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
+        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal).get();
         assertEquals(403, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
-        verify(courseService, never()).getEnrolledStudents(any());
+        verify(courseService, never()).getEnrolledStudentsAsync(any());
     }
 
     @Test
     @DisplayName("GET /courses/{courseId}/students - forbidden (not owner)")
-    void getEnrolledStudents_forbidden_notOwner() {
+    void getEnrolledStudents_forbidden_notOwner() throws ExecutionException, InterruptedException {
         UUID courseId = UUID.randomUUID();
         TutorApplication app = new TutorApplication(tutorId);
         app.setStatus(TutorApplication.Status.ACCEPTED);
         Course course = new Course("Course 1", "Desc", UUID.randomUUID(), new BigDecimal("10000")); // different tutorId
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
-        when(courseService.getCourseById(courseId)).thenReturn(Optional.of(course));
+        
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.of(app)));
+        
+        when(courseService.getCourseByIdAsync(courseId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.of(course)));
 
-        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
+        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal).get();
         assertEquals(403, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("Only the owner can view"));
-        verify(courseService, never()).getEnrolledStudents(any());
+        verify(courseService, never()).getEnrolledStudentsAsync(any());
     }
 
     @Test
     @DisplayName("GET /courses/{courseId}/students - not found")
-    void getEnrolledStudents_notFound() {
+    void getEnrolledStudents_notFound() throws ExecutionException, InterruptedException {
         UUID courseId = UUID.randomUUID();
         TutorApplication app = new TutorApplication(tutorId);
         app.setStatus(TutorApplication.Status.ACCEPTED);
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
-        when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
+        
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.of(app)));
+        
+        when(courseService.getCourseByIdAsync(courseId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.empty()));
 
-        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
+        ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal).get();
         assertEquals(403, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("Only the owner can view"));
-        verify(courseService, never()).getEnrolledStudents(any());
+        verify(courseService, never()).getEnrolledStudentsAsync(any());
     }
 }
