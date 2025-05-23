@@ -14,24 +14,28 @@ import com.example.coursebe.model.Course;
  */
 @Repository
 public interface CourseRepository extends JpaRepository<Course, UUID> {
-    
+
     /**
      * Find all courses created by a specific tutor
+     * 
      * @param tutorId the ID of the tutor
      * @return list of courses created by the tutor
      */
     List<Course> findByTutorId(UUID tutorId);
-    
+
     /**
      * Find courses whose names contain the given keyword (case-insensitive)
+     * 
      * @param name search term to match against course names
      * @return list of courses with matching names
      */
     List<Course> findByNameContainingIgnoreCase(String name);
 
     /**
-     * Find courses whose names or description contain the given keyword (case-insensitive)
-     * @param name search term to match against course name
+     * Find courses whose names or description contain the given keyword
+     * (case-insensitive)
+     * 
+     * @param name        search term to match against course name
      * @param description search term to match against course description
      * @return list of courses with matching names or description
      */

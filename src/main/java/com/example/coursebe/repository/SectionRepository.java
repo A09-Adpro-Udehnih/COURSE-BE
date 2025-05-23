@@ -15,23 +15,26 @@ import com.example.coursebe.model.Section;
  */
 @Repository
 public interface SectionRepository extends JpaRepository<Section, UUID> {
-    
+
     /**
      * Find all sections belonging to a specific course
+     * 
      * @param course the course entity
      * @return list of sections for the course
      */
     List<Section> findByCourse(Course course);
-    
+
     /**
      * Find all sections belonging to a specific course, ordered by position
+     * 
      * @param course the course entity
      * @return ordered list of sections for the course
      */
     List<Section> findByCourseOrderByPositionAsc(Course course);
-    
+
     /**
      * Find all sections belonging to a course with the given ID
+     * 
      * @param courseId the course ID
      * @return list of sections for the course
      */

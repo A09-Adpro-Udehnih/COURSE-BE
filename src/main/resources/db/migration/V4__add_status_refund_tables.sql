@@ -5,8 +5,9 @@ ALTER TABLE payments
 
 CREATE TABLE IF NOT EXISTS refunds (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    payment_id UUID NOT NULL REFERENCES payments(id),
-    amount NUMERIC(12, 2) NOT NULL,
-    reason TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    payment_id UUID NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    processed_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    requested_at TIMESTAMP
 );

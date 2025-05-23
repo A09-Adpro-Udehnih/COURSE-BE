@@ -1,10 +1,23 @@
 package com.example.coursebe.service;
 
-import com.example.coursebe.model.Course;
-import com.example.coursebe.repository.CourseRepository;
-import com.example.coursebe.pattern.strategy.CourseSearchContext;
-import com.example.coursebe.pattern.strategy.CourseSearchStrategy;
-import com.example.coursebe.exception.UnsupportedSearchTypeException;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,15 +26,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import com.example.coursebe.exception.UnsupportedSearchTypeException;
+import com.example.coursebe.model.Course;
+import com.example.coursebe.pattern.strategy.CourseSearchContext;
+import com.example.coursebe.pattern.strategy.CourseSearchStrategy;
+import com.example.coursebe.repository.CourseRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class CourseServiceImplTest {
@@ -33,7 +42,6 @@ public class CourseServiceImplTest {
 
     @Mock
     private CourseSearchStrategy mockSearchStrategy;
-
 
     @InjectMocks
     private CourseServiceImpl courseService;
@@ -47,7 +55,7 @@ public class CourseServiceImplTest {
     void setUp() {
         courseId = UUID.randomUUID();
         tutorId = UUID.randomUUID();
-        
+
         testCourse = new Course("Test Course", "Test Description", tutorId, new BigDecimal("99.99"));
         // Use reflection to set the ID since it's normally generated
         try {
@@ -57,7 +65,7 @@ public class CourseServiceImplTest {
         } catch (Exception e) {
             fail("Failed to set course ID");
         }
-        
+
         UUID courseId2 = UUID.randomUUID();
         Course course2 = new Course("Java Course", "Learn Java", tutorId, new BigDecimal("149.99"));
         try {
@@ -67,7 +75,7 @@ public class CourseServiceImplTest {
         } catch (Exception e) {
             fail("Failed to set course ID");
         }
-        
+
         testCourses = Arrays.asList(testCourse, course2);
     }
 
@@ -76,10 +84,10 @@ public class CourseServiceImplTest {
     void getAllCourses() {
         // Given
         when(courseRepository.findAll()).thenReturn(testCourses);
-        
+
         // When
         List<Course> result = courseService.getAllCourses();
-        
+
         // Then
         assertEquals(2, result.size());
         assertEquals(testCourses, result);
@@ -91,10 +99,10 @@ public class CourseServiceImplTest {
     void getCourseById() {
         // Given
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(testCourse));
-        
+
         // When
         Optional<Course> result = courseService.getCourseById(courseId);
-        
+
         // Then
         assertTrue(result.isPresent());
         assertEquals(testCourse, result.get());
@@ -107,10 +115,10 @@ public class CourseServiceImplTest {
         // Given
         UUID nonExistentId = UUID.randomUUID();
         when(courseRepository.findById(nonExistentId)).thenReturn(Optional.empty());
-        
+
         // When
         Optional<Course> result = courseService.getCourseById(nonExistentId);
-        
+
         // Then
         assertFalse(result.isPresent());
         verify(courseRepository).findById(nonExistentId);
@@ -121,10 +129,10 @@ public class CourseServiceImplTest {
     void getCoursesByTutorId() {
         // Given
         when(courseRepository.findByTutorId(tutorId)).thenReturn(testCourses);
-        
+
         // When
         List<Course> result = courseService.getCoursesByTutorId(tutorId);
-        
+
         // Then
         assertEquals(2, result.size());
         assertEquals(testCourses, result);
@@ -222,13 +230,13 @@ public class CourseServiceImplTest {
         String name = "New Course";
         String description = "New Description";
         BigDecimal price = new BigDecimal("79.99");
-        
+
         Course newCourse = new Course(name, description, tutorId, price);
         when(courseRepository.save(any(Course.class))).thenReturn(newCourse);
-        
+
         // When
         Course result = courseService.createCourse(name, description, tutorId, price);
-        
+
         // Then
         assertNotNull(result);
         assertEquals(name, result.getName());
@@ -245,12 +253,12 @@ public class CourseServiceImplTest {
         String name = null;
         String description = "Description";
         BigDecimal price = new BigDecimal("79.99");
-        
+
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             courseService.createCourse(name, description, tutorId, price);
         });
-        
+
         assertEquals("Course name cannot be empty", exception.getMessage());
         verify(courseRepository, never()).save(any(Course.class));
     }
@@ -262,13 +270,13 @@ public class CourseServiceImplTest {
         String updatedName = "Updated Course";
         String updatedDescription = "Updated Description";
         BigDecimal updatedPrice = new BigDecimal("129.99");
-        
+
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(testCourse));
         when(courseRepository.save(any(Course.class))).thenAnswer(i -> i.getArguments()[0]);
-        
+
         // When
         Optional<Course> result = courseService.updateCourse(courseId, updatedName, updatedDescription, updatedPrice);
-        
+
         // Then
         assertTrue(result.isPresent());
         assertEquals(updatedName, result.get().getName());
@@ -284,10 +292,11 @@ public class CourseServiceImplTest {
         // Given
         UUID nonExistentId = UUID.randomUUID();
         when(courseRepository.findById(nonExistentId)).thenReturn(Optional.empty());
-        
+
         // When
-        Optional<Course> result = courseService.updateCourse(nonExistentId, "Name", "Description", new BigDecimal("99.99"));
-        
+        Optional<Course> result = courseService.updateCourse(nonExistentId, "Name", "Description",
+                new BigDecimal("99.99"));
+
         // Then
         assertFalse(result.isPresent());
         verify(courseRepository).findById(nonExistentId);
@@ -299,10 +308,10 @@ public class CourseServiceImplTest {
     void deleteCourse() {
         // Given
         when(courseRepository.existsById(courseId)).thenReturn(true);
-        
+
         // When
         boolean result = courseService.deleteCourse(courseId);
-        
+
         // Then
         assertTrue(result);
         verify(courseRepository).existsById(courseId);
@@ -315,10 +324,10 @@ public class CourseServiceImplTest {
         // Given
         UUID nonExistentId = UUID.randomUUID();
         when(courseRepository.existsById(nonExistentId)).thenReturn(false);
-        
+
         // When
         boolean result = courseService.deleteCourse(nonExistentId);
-        
+
         // Then
         assertFalse(result);
         verify(courseRepository).existsById(nonExistentId);
