@@ -14,7 +14,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/tutors/registration")
+@RequestMapping("/tutors/registration")
 public class TutorApplicationController {
     private final TutorApplicationService tutorApplicationService;
 
