@@ -1,6 +1,10 @@
 package com.example.coursebe.controller;
 
+import com.example.coursebe.common.ApiResponse;
+import com.example.coursebe.dto.CourseResponse;
+import com.example.coursebe.dto.EnrollmentResponse;
 import com.example.coursebe.exception.UnsupportedSearchTypeException;
+import com.example.coursebe.model.Enrollment;
 import com.example.coursebe.service.EnrollmentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,6 +19,7 @@ import com.example.coursebe.dto.CreateCourseRequest;
 import java.security.Principal;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/courses")
@@ -31,88 +36,118 @@ public class CourseController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllCourses(
+    public ResponseEntity<ApiResponse<List<CourseResponse>>> getAllCourses(
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String keyword
     ) {
         try {
-            List<Course> courses;
-            if (type != null && keyword != null) {
-                courses = courseService.searchCourses(type, keyword);
-            } else {
-                courses = courseService.getAllCourses();
-            }
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.OK.value());
-            resp.put("success", true);
-            resp.put("courses", courses);
-            return ResponseEntity.status(HttpStatus.OK).body(resp);
+            List<Course> courses = (type != null && keyword != null)
+                ? courseService.searchCourses(type, keyword)
+                : courseService.getAllCourses();
+
+            List<CourseResponse> courseResponses = courses.stream()
+                .map(this::toCourseResponse)
+                .collect(Collectors.toList());
+
+            return ResponseEntity.ok(ApiResponse.success(
+                HttpStatus.OK.value(),
+                "Courses retrieved successfully.",
+                courseResponses
+            ));
         } catch (UnsupportedSearchTypeException e) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.BAD_REQUEST.value());
-            resp.put("success", false);
-            resp.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(resp);
+            return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(
+                    HttpStatus.BAD_REQUEST.value(),
+                    e.getMessage()
+                ));
+        } catch (Exception e) {
+            return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(
+                    HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                    "An error occurred while fetching courses."
+                ));
         }
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getCourseById(@PathVariable UUID id) {
-        Optional<Course> courseOpt = courseService.getCourseById(id);
+    public ResponseEntity<ApiResponse<CourseResponse>> getCourseById(@PathVariable UUID id) {
+        try {
+            Optional<Course> course = courseService.getCourseById(id);
 
-        if (courseOpt.isEmpty()) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.NOT_FOUND.value());
-            resp.put("success", false);
-            resp.put("message", "Course not found.");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
+            if (course.isEmpty()) {
+                return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(
+                        HttpStatus.NOT_FOUND.value(),
+                        "Course not found."
+                    ));
+            }
+
+            CourseResponse courseResponse = this.toCourseResponse(course.get());
+
+            return ResponseEntity.ok(ApiResponse.success(
+                HttpStatus.OK.value(),
+                "Course retrieved successfully.",
+                courseResponse
+            ));
+        } catch (Exception e) {
+            return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(
+                    HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                    "An error occurred while retrieving the course."
+                ));
         }
-
-        Course course = courseOpt.get();
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("code", HttpStatus.OK.value());
-        resp.put("success", true);
-        resp.put("course", course);
-        return ResponseEntity.status(HttpStatus.OK).body(resp);
     }
 
     @PostMapping("{id}/enroll")
-    public CompletableFuture<ResponseEntity<?>> enrollCourse(@PathVariable UUID id, Principal principal) {
+    public CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> enrollCourse(@PathVariable UUID id, Principal principal) {
         UUID userId = UUID.fromString(principal.getName());
-        var courseOpt = courseService.getCourseById(id);
+        Optional<Course> courseOpt = courseService.getCourseById(id);
 
         if (courseOpt.isEmpty()) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.NOT_FOUND.value());
-            resp.put("success", false);
-            resp.put("message", "Course not found.");
-            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp));
+            return CompletableFuture.completedFuture(
+                ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(
+                        HttpStatus.NOT_FOUND.value(),
+                        "Course not found."
+                    ))
+            );
         }
 
         return enrollmentService.enroll(userId, id)
-                .thenApply(enrollment -> {
-                    if (enrollment != null) {
-                        Map<String, Object> resp = new HashMap<>();
-                        resp.put("code", HttpStatus.OK.value());
-                        resp.put("success", true);
-                        resp.put("message", "Successfully enrolled in the course.");
-                        return (ResponseEntity<?>) ResponseEntity.status(HttpStatus.OK).body(resp);
-                    } else {
-                        Map<String, Object> resp = new HashMap<>();
-                        resp.put("code", HttpStatus.BAD_REQUEST.value());
-                        resp.put("success", false);
-                        resp.put("message", "Failed to enroll in the course.");
-                        return (ResponseEntity<?>) ResponseEntity.status(HttpStatus.BAD_REQUEST).body(resp);
-                    }
-                })
-                .exceptionally(ex -> {
-                    Map<String, Object> resp = new HashMap<>();
-                    resp.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
-                    resp.put("success", false);
-                    resp.put("message", "Error enrolling in course: " +
-                            (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(resp);
-                });
+            .thenApply(enrollment -> {
+                if (enrollment != null) {
+                    EnrollmentResponse enrollmentResponse = this.toEnrollmentResponse(enrollment);
+                    return ResponseEntity.ok(
+                        ApiResponse.success(
+                            HttpStatus.OK.value(),
+                            "Successfully enrolled in the course.",
+                            enrollmentResponse
+                        )
+                    );
+                } else {
+                    return ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.<EnrollmentResponse>error(
+                            HttpStatus.BAD_REQUEST.value(),
+                            "Failed to enroll in the course."
+                        ));
+                }
+            })
+            .exceptionally(ex -> {
+                String errorMessage = "Error enrolling in course: " +
+                        (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
+                return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<EnrollmentResponse>error(
+                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        errorMessage
+                    ));
+            });
     }
 
     // POST /courses
@@ -226,5 +261,40 @@ public class CourseController {
         resp.put("success", true);
         resp.put("students", students);
         return ResponseEntity.ok(resp);
+    }
+
+    /* DTO Mapper helper */
+    private CourseResponse toCourseResponse(Course course) {
+        List<CourseResponse.Section> sectionResponses = course.getSections().stream()
+            .map(section -> new CourseResponse.Section(
+                section.getId(),
+                section.getTitle()
+            ))
+            .collect(Collectors.toList());
+
+        return new CourseResponse(
+                course.getId(),
+                course.getName(),
+                course.getDescription(),
+                null,
+                // TODO: tutor name //
+                // course.getTutorId(),
+                course.getPrice(),
+                sectionResponses
+        );
+    };
+
+    private EnrollmentResponse toEnrollmentResponse(Enrollment enrollment) {
+        Course course = enrollment.getCourse();
+        return new EnrollmentResponse(
+                course.getId(),
+                course.getName(),
+                course.getDescription(),
+                null,
+                // TODO: tutor name //
+                // course.getTutorId(),
+                enrollment.getId(),
+                enrollment.getEnrollmentDate() // Using LocalDateTime directly
+        );
     }
 }

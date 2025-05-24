@@ -1,5 +1,8 @@
 package com.example.coursebe.controller;
 
+import com.example.coursebe.common.ApiResponse;
+import com.example.coursebe.dto.CourseResponse;
+import com.example.coursebe.dto.EnrollmentResponse;
 import com.example.coursebe.dto.CreateCourseRequest;
 import com.example.coursebe.model.Course;
 import com.example.coursebe.model.Enrollment;
@@ -61,17 +64,18 @@ class CourseControllerTest {
         when(courseService.getAllCourses()).thenReturn(mockCourses);
 
         // When
-        ResponseEntity<?> response = courseController.getAllCourses(null, null);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(null, null);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(200, responseBody.get("code"));
-        assertEquals(true, responseBody.get("success"));
-        assertNotNull(responseBody.get("courses"));
-        assertEquals(2, ((List<?>) responseBody.get("courses")).size());
+        assertEquals(200, responseBody.getCode());
+        assertTrue(responseBody.isSuccess());
+        assertEquals("Courses retrieved successfully.", responseBody.getMessage());
+        assertNotNull(responseBody.getData());
+        assertEquals(2, responseBody.getData().size());
 
         verify(courseService).getAllCourses();
         verify(courseService, never()).searchCourses(any(), any());
@@ -91,17 +95,18 @@ class CourseControllerTest {
         when(courseService.searchCourses(type, keyword)).thenReturn(mockCourses);
 
         // When
-        ResponseEntity<?> response = courseController.getAllCourses(type, keyword);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(200, responseBody.get("code"));
-        assertEquals(true, responseBody.get("success"));
-        assertNotNull(responseBody.get("courses"));
-        assertEquals(1, ((List<?>) responseBody.get("courses")).size());
+        assertEquals(200, responseBody.getCode());
+        assertTrue(responseBody.isSuccess());
+        assertEquals("Courses retrieved successfully.", responseBody.getMessage());
+        assertNotNull(responseBody.getData());
+        assertEquals(1, responseBody.getData().size());
 
         verify(courseService).searchCourses(type, keyword);
         verify(courseService, never()).getAllCourses();
@@ -121,17 +126,17 @@ class CourseControllerTest {
         when(courseService.searchCourses(type, keyword)).thenReturn(mockCourses);
 
         // When
-        ResponseEntity<?> response = courseController.getAllCourses(type, keyword);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(200, responseBody.get("code"));
-        assertEquals(true, responseBody.get("success"));
-        assertNotNull(responseBody.get("courses"));
-        assertEquals(1, ((List<?>) responseBody.get("courses")).size());
+        assertEquals(200, responseBody.getCode());
+        assertTrue(responseBody.isSuccess());
+        assertNotNull(responseBody.getData());
+        assertEquals(1, responseBody.getData().size());
 
         verify(courseService).searchCourses(type, keyword);
         verify(courseService, never()).getAllCourses();
@@ -147,16 +152,16 @@ class CourseControllerTest {
         when(courseService.searchCourses(type, keyword)).thenReturn(Collections.emptyList());
 
         // When
-        ResponseEntity<?> response = courseController.getAllCourses(type, keyword);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(200, responseBody.get("code"));
-        assertEquals(true, responseBody.get("success"));
-        assertTrue(((List<?>) responseBody.get("courses")).isEmpty());
+        assertEquals(200, responseBody.getCode());
+        assertTrue(responseBody.isSuccess());
+        assertTrue(responseBody.getData().isEmpty());
 
         verify(courseService).searchCourses(type, keyword);
         verify(courseService, never()).getAllCourses();
@@ -173,16 +178,17 @@ class CourseControllerTest {
                 .thenThrow(new UnsupportedSearchTypeException(type));
 
         // When
-        ResponseEntity<?> response = courseController.getAllCourses(type, keyword);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword);
 
         // Then
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(400, responseBody.get("code"));
-        assertEquals(false, responseBody.get("success"));
-        assertEquals("Unsupported search type: " + type, responseBody.get("message"));
+        assertEquals(400, responseBody.getCode());
+        assertFalse(responseBody.isSuccess());
+        assertEquals("Unsupported search type: " + type, responseBody.getMessage());
+        assertNull(responseBody.getData());
 
         verify(courseService).searchCourses(type, keyword);
         verify(courseService, never()).getAllCourses();
@@ -203,16 +209,16 @@ class CourseControllerTest {
         when(courseService.getAllCourses()).thenReturn(mockCourses);
 
         // When
-        ResponseEntity<?> response = courseController.getAllCourses(type, keyword);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(200, responseBody.get("code"));
-        assertEquals(true, responseBody.get("success"));
-        assertEquals(2, ((List<?>) responseBody.get("courses")).size());
+        assertEquals(200, responseBody.getCode());
+        assertTrue(responseBody.isSuccess());
+        assertEquals(2, responseBody.getData().size());
 
         verify(courseService).getAllCourses();
         verify(courseService, never()).searchCourses(any(), any());
@@ -237,16 +243,18 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.of(mockCourse));
 
         // When
-        ResponseEntity<?> response = courseController.getCourseById(courseId);
+        ResponseEntity<ApiResponse<CourseResponse>> response = courseController.getCourseById(courseId);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<CourseResponse> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(200, responseBody.get("code"));
-        assertEquals(true, responseBody.get("success"));
-        assertNotNull(responseBody.get("course"));
+        assertEquals(200, responseBody.getCode());
+        assertTrue(responseBody.isSuccess());
+        assertEquals("Course retrieved successfully.", responseBody.getMessage());
+        assertNotNull(responseBody.getData());
+        assertEquals(courseId, responseBody.getData().getId());
 
         verify(courseService).getCourseById(courseId);
     }
@@ -259,16 +267,17 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
 
         // When
-        ResponseEntity<?> response = courseController.getCourseById(courseId);
+        ResponseEntity<ApiResponse<CourseResponse>> response = courseController.getCourseById(courseId);
 
         // Then
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<CourseResponse> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(404, responseBody.get("code"));
-        assertEquals(false, responseBody.get("success"));
-        assertEquals("Course not found.", responseBody.get("message"));
+        assertEquals(404, responseBody.getCode());
+        assertFalse(responseBody.isSuccess());
+        assertEquals("Course not found.", responseBody.getMessage());
+        assertNull(responseBody.getData());
 
         verify(courseService).getCourseById(courseId);
     }
@@ -287,17 +296,19 @@ class CourseControllerTest {
         );
 
         // When
-        CompletableFuture<ResponseEntity<?>> futureResponse = courseController.enrollCourse(courseId, principal);
-        ResponseEntity<?> response = futureResponse.get();  // Wait for the async result
+        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
+                courseController.enrollCourse(courseId, principal);
+        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<EnrollmentResponse> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(200, responseBody.get("code"));
-        assertEquals(true, responseBody.get("success"));
-        assertEquals("Successfully enrolled in the course.", responseBody.get("message"));
+        assertEquals(200, responseBody.getCode());
+        assertTrue(responseBody.isSuccess());
+        assertEquals("Successfully enrolled in the course.", responseBody.getMessage());
+        assertNotNull(responseBody.getData());
 
         verify(courseService).getCourseById(courseId);
         verify(enrollmentService).enroll(tutorId, courseId);
@@ -311,17 +322,19 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
 
         // When
-        CompletableFuture<ResponseEntity<?>> futureResponse = courseController.enrollCourse(courseId, principal);
-        ResponseEntity<?> response = futureResponse.get();  // Wait for the async result
+        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
+                courseController.enrollCourse(courseId, principal);
+        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
 
         // Then
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<EnrollmentResponse> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(404, responseBody.get("code"));
-        assertEquals(false, responseBody.get("success"));
-        assertEquals("Course not found.", responseBody.get("message"));
+        assertEquals(404, responseBody.getCode());
+        assertFalse(responseBody.isSuccess());
+        assertEquals("Course not found.", responseBody.getMessage());
+        assertNull(responseBody.getData());
 
         verify(courseService).getCourseById(courseId);
         verify(enrollmentService, never()).enroll(any(UUID.class), any(UUID.class));
@@ -340,17 +353,19 @@ class CourseControllerTest {
         );
 
         // When
-        CompletableFuture<ResponseEntity<?>> futureResponse = courseController.enrollCourse(courseId, principal);
-        ResponseEntity<?> response = futureResponse.get();  // Wait for the async result
+        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
+                courseController.enrollCourse(courseId, principal);
+        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
 
         // Then
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<EnrollmentResponse> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(400, responseBody.get("code"));
-        assertEquals(false, responseBody.get("success"));
-        assertEquals("Failed to enroll in the course.", responseBody.get("message"));
+        assertEquals(400, responseBody.getCode());
+        assertFalse(responseBody.isSuccess());
+        assertEquals("Failed to enroll in the course.", responseBody.getMessage());
+        assertNull(responseBody.getData());
 
         verify(courseService).getCourseById(courseId);
         verify(enrollmentService).enroll(tutorId, courseId);
@@ -370,17 +385,19 @@ class CourseControllerTest {
         );
 
         // When
-        CompletableFuture<ResponseEntity<?>> futureResponse = courseController.enrollCourse(courseId, principal);
-        ResponseEntity<?> response = futureResponse.get();  // Wait for the async result
+        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
+                courseController.enrollCourse(courseId, principal);
+        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
 
         // Then
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
 
-        Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+        ApiResponse<EnrollmentResponse> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(500, responseBody.get("code"));
-        assertEquals(false, responseBody.get("success"));
-        assertEquals("Error enrolling in course: Test exception", responseBody.get("message"));
+        assertEquals(500, responseBody.getCode());
+        assertFalse(responseBody.isSuccess());
+        assertEquals("Error enrolling in course: Test exception", responseBody.getMessage());
+        assertNull(responseBody.getData());
 
         verify(courseService).getCourseById(courseId);
         verify(enrollmentService).enroll(tutorId, courseId);
