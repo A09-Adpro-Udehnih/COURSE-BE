@@ -19,7 +19,7 @@ import java.util.UUID;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/reviews")
+@RequestMapping("/reviews")
 public class ReviewController {
     private final ReviewService reviewService;
 
