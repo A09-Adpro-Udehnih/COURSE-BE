@@ -7,6 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -61,6 +65,98 @@ public class CourseRepositoryTest {
         // then
         assertNotNull(courses);
         assertEquals(3, courses.size());
+    }
+
+    @Test
+    @DisplayName("Should find all courses with pagination")
+    void findAllCoursesWithPagination() {
+        // Test first page with 2 items per page
+        Pageable firstPageable = PageRequest.of(0, 2);
+        Page<Course> firstPage = courseRepository.findAll(firstPageable);
+
+        assertNotNull(firstPage);
+        assertEquals(2, firstPage.getContent().size());
+        assertEquals(3, firstPage.getTotalElements());
+        assertEquals(2, firstPage.getTotalPages());
+        assertEquals(0, firstPage.getNumber());
+
+        // Test second page with 2 items per page
+        Pageable secondPageable = PageRequest.of(1, 2);
+        Page<Course> secondPage = courseRepository.findAll(secondPageable);
+
+        assertNotNull(secondPage);
+        assertEquals(1, secondPage.getContent().size());
+        assertEquals(3, secondPage.getTotalElements());
+        assertEquals(2, secondPage.getTotalPages());
+        assertEquals(1, secondPage.getNumber());
+
+        // Test with sorting
+        Pageable sortedPageable = PageRequest.of(0, 3, Sort.by("price").ascending());
+        Page<Course> sortedPage = courseRepository.findAll(sortedPageable);
+
+        assertNotNull(sortedPage);
+        assertEquals(3, sortedPage.getContent().size());
+        assertEquals(course3.getId(), sortedPage.getContent().get(0).getId()); // Python course has lowest price
+
+        // Test empty page (beyond available data)
+        Pageable beyondPageable = PageRequest.of(5, 2);
+        Page<Course> beyondPage = courseRepository.findAll(beyondPageable);
+
+        assertNotNull(beyondPage);
+        assertEquals(0, beyondPage.getContent().size());
+        assertEquals(3, beyondPage.getTotalElements());
+        assertTrue(beyondPage.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should find courses by name or description with pagination")
+    void findCoursesByNameOrDescriptionWithPagination() {
+        // Test basic functionality
+        Pageable pageable = PageRequest.of(0, 2);
+        Page<Course> basicCoursesPage = courseRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
+                "basics", "basics", pageable);
+
+        assertNotNull(basicCoursesPage);
+        assertEquals(2, basicCoursesPage.getContent().size());
+        assertEquals(2, basicCoursesPage.getTotalElements());
+        assertEquals(1, basicCoursesPage.getTotalPages());
+
+        // Verify actual content is correct
+        List<UUID> basicCourseIds = basicCoursesPage.getContent().stream()
+                .map(Course::getId)
+                .toList();
+        assertTrue(basicCourseIds.contains(course1.getId())); // Java basics
+        assertTrue(basicCourseIds.contains(course3.getId())); // Python basics
+    }
+
+    @Test
+    @DisplayName("Should find courses by name with pagination")
+    void findCoursesByNameWithPagination() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> javaCoursesPage = courseRepository.findByNameContainingIgnoreCase("java", pageable);
+
+        assertNotNull(javaCoursesPage);
+        assertEquals(2, javaCoursesPage.getContent().size());
+        assertEquals(2, javaCoursesPage.getTotalElements());
+        assertEquals(1, javaCoursesPage.getTotalPages());
+
+        // Verify case insensitivity
+        Page<Course> upperJavaCoursesPage = courseRepository.findByNameContainingIgnoreCase("JAVA", pageable);
+        assertEquals(2, upperJavaCoursesPage.getTotalElements());
+
+        // Test pagination with limited page size
+        Pageable smallPage = PageRequest.of(0, 1);
+        Page<Course> firstJavaCoursePage = courseRepository.findByNameContainingIgnoreCase("java", smallPage);
+        assertEquals(1, firstJavaCoursePage.getContent().size());
+        assertEquals(2, firstJavaCoursePage.getTotalElements());
+        assertEquals(2, firstJavaCoursePage.getTotalPages());
+
+        // Second page
+        Pageable secondSmallPage = PageRequest.of(1, 1);
+        Page<Course> secondJavaCoursePage = courseRepository.findByNameContainingIgnoreCase("java", secondSmallPage);
+        assertEquals(1, secondJavaCoursePage.getContent().size());
+        assertEquals(2, secondJavaCoursePage.getTotalElements());
+        assertEquals(1, secondJavaCoursePage.getNumber());
     }
     
     @Test
