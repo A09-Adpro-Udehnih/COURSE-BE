@@ -6,6 +6,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,35 +31,88 @@ class SearchByNameStrategyTest {
     }
 
     @Test
-    void testSearch() {
-        List<Course> mockCourses = List.of(new Course());
-        when(courseRepository.findByNameContainingIgnoreCase("test"))
-                .thenReturn(mockCourses);
+    void testSearch_WithPagination() {
+        // Given
+        List<Course> mockCourseList = List.of(new Course());
+        Page<Course> mockCoursePage = new PageImpl<>(mockCourseList);
+        Pageable pageable = PageRequest.of(0, 10);
 
-        List<Course> result = strategy.search("test");
-        assertEquals(mockCourses, result);
-        verify(courseRepository, times(1)).findByNameContainingIgnoreCase("test");
+        when(courseRepository.findByNameContainingIgnoreCase("test", pageable))
+                .thenReturn(mockCoursePage);
+
+        // When
+        Page<Course> result = strategy.search("test", pageable);
+
+        // Then
+        assertEquals(mockCoursePage, result);
+        assertEquals(mockCourseList, result.getContent());
+        verify(courseRepository, times(1)).findByNameContainingIgnoreCase("test", pageable);
     }
 
     @Test
-    void testSearch_EmptyKeyword() {
-        List<Course> mockCourses = new ArrayList<>();
-        when(courseRepository.findByNameContainingIgnoreCase(""))
-                .thenReturn(mockCourses);
+    void testSearch_EmptyKeyword_WithPagination() {
+        // Given
+        Page<Course> mockEmptyPage = new PageImpl<>(List.of());
+        Pageable pageable = PageRequest.of(0, 5);
 
-        List<Course> result = strategy.search("");
-        assertEquals(mockCourses, result);
-        verify(courseRepository, times(1)).findByNameContainingIgnoreCase("");
+        when(courseRepository.findByNameContainingIgnoreCase("", pageable))
+                .thenReturn(mockEmptyPage);
+
+        // When
+        Page<Course> result = strategy.search("", pageable);
+
+        // Then
+        assertEquals(mockEmptyPage, result);
+        assertTrue(result.isEmpty());
+        verify(courseRepository, times(1)).findByNameContainingIgnoreCase("", pageable);
     }
 
     @Test
-    void testSearch_NullKeyword() {
-        List<Course> mockCourses = new ArrayList<>();
-        when(courseRepository.findByNameContainingIgnoreCase(null))
-                .thenReturn(mockCourses);
+    void testSearch_NullKeyword_WithPagination() {
+        // Given
+        Page<Course> mockEmptyPage = new PageImpl<>(List.of());
+        Pageable pageable = PageRequest.of(0, 20);
 
-        List<Course> result = strategy.search(null);
-        assertEquals(mockCourses, result);
-        verify(courseRepository, times(1)).findByNameContainingIgnoreCase(null);
+        when(courseRepository.findByNameContainingIgnoreCase(null, pageable))
+                .thenReturn(mockEmptyPage);
+
+        // When
+        Page<Course> result = strategy.search(null, pageable);
+
+        // Then
+        assertEquals(mockEmptyPage, result);
+        assertTrue(result.isEmpty());
+        verify(courseRepository, times(1)).findByNameContainingIgnoreCase(null, pageable);
+    }
+
+    @Test
+    void testSearch_DifferentPageSizes() {
+        // Given
+        List<Course> mockCourseList = List.of(new Course(), new Course());
+        Pageable firstPageable = PageRequest.of(0, 2);
+        Pageable secondPageable = PageRequest.of(1, 1);
+
+        Page<Course> firstPage = new PageImpl<>(mockCourseList, firstPageable, 3);
+        Page<Course> secondPage = new PageImpl<>(List.of(new Course()), secondPageable, 3);
+
+        when(courseRepository.findByNameContainingIgnoreCase("java", firstPageable))
+                .thenReturn(firstPage);
+        when(courseRepository.findByNameContainingIgnoreCase("java", secondPageable))
+                .thenReturn(secondPage);
+
+        // When
+        Page<Course> firstResult = strategy.search("java", firstPageable);
+        Page<Course> secondResult = strategy.search("java", secondPageable);
+
+        // Then
+        assertEquals(firstPage, firstResult);
+        assertEquals(secondPage, secondResult);
+        assertEquals(2, firstResult.getContent().size());
+        assertEquals(1, secondResult.getContent().size());
+        assertEquals(0, firstResult.getNumber());
+        assertEquals(1, secondResult.getNumber());
+
+        verify(courseRepository, times(1)).findByNameContainingIgnoreCase("java", firstPageable);
+        verify(courseRepository, times(1)).findByNameContainingIgnoreCase("java", secondPageable);
     }
 }
