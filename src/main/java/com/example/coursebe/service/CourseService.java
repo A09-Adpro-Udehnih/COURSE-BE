@@ -1,6 +1,8 @@
 package com.example.coursebe.service;
 
 import com.example.coursebe.model.Course;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -11,12 +13,13 @@ import java.util.UUID;
  * Service interface for managing Course entities
  */
 public interface CourseService {
-    
+
     /**
-     * Get all courses
-     * @return List of all courses
+     * Get all courses with pagination
+     * @param pageable Pagination information (page number, size, sort)
+     * @return Page of courses with pagination information
      */
-    List<Course> getAllCourses();
+    Page<Course> getAllCourses(Pageable pageable);
     
     /**
      * Get course by ID
@@ -31,14 +34,15 @@ public interface CourseService {
      * @return List of courses created by the tutor
      */
     List<Course> getCoursesByTutorId(UUID tutorId);
-    
+
     /**
-     * Search courses by strategy (case insensitive)
-     * @param type type of search
+     * Search courses by strategy with pagination (case insensitive)
+     * @param type Type of search (keyword, name, description)
      * @param keyword Keyword to search for
-     * @return List of matching courses
+     * @param pageable Pagination information (page number, size, sort)
+     * @return Page of matching courses
      */
-    List<Course> searchCourses(String type, String keyword);
+    Page<Course> searchCourses(String type, String keyword, Pageable pageable);
     
     /**
      * Create a new course
