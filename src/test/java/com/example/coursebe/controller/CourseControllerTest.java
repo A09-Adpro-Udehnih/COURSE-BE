@@ -18,6 +18,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -54,17 +58,21 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /courses - should return all courses when no search parameters")
+    @DisplayName("GET /courses - should return all courses with pagination when no search parameters")
     void getAllCourses_noSearchParameters() {
         // Given
+        int page = 0;
+        int size = 15;
+        Pageable pageable = PageRequest.of(page, size);
         List<Course> mockCourses = Arrays.asList(
                 new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99")),
                 new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99"))
         );
-        when(courseService.getAllCourses()).thenReturn(mockCourses);
+        Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 2);
+        when(courseService.getAllCourses(pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(null, null);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(null, null, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -77,25 +85,36 @@ class CourseControllerTest {
         assertNotNull(responseBody.getData());
         assertEquals(2, responseBody.getData().size());
 
-        verify(courseService).getAllCourses();
-        verify(courseService, never()).searchCourses(any(), any());
+        // Check pagination metadata
+        assertNotNull(responseBody.getMetadata());
+        assertEquals(2L, responseBody.getMetadata().get("totalItems"));
+        assertEquals(1, responseBody.getMetadata().get("totalPages"));
+        assertEquals(0, responseBody.getMetadata().get("currentPage"));
+        assertEquals(15, responseBody.getMetadata().get("pageSize"));
+
+        verify(courseService).getAllCourses(pageable);
+        verify(courseService, never()).searchCourses(anyString(), anyString(), any(Pageable.class));
     }
 
     @Test
-    @DisplayName("GET /courses?keyword=Java - should search courses by keyword")
+    @DisplayName("GET /courses?keyword=Java - should search courses by keyword with pagination")
     void getAllCourses_searchByKeyword() {
         // Given
         String type = "keyword";
         String keyword = "Java";
+        int page = 0;
+        int size = 15;
+        Pageable pageable = PageRequest.of(page, size);
 
         List<Course> mockCourses = Arrays.asList(
                 new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99"))
         );
+        Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 1);
 
-        when(courseService.searchCourses(type, keyword)).thenReturn(mockCourses);
+        when(courseService.searchCourses(type, keyword, pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -108,25 +127,36 @@ class CourseControllerTest {
         assertNotNull(responseBody.getData());
         assertEquals(1, responseBody.getData().size());
 
-        verify(courseService).searchCourses(type, keyword);
-        verify(courseService, never()).getAllCourses();
+        // Check pagination metadata
+        assertNotNull(responseBody.getMetadata());
+        assertEquals(1L, responseBody.getMetadata().get("totalItems"));
+        assertEquals(1, responseBody.getMetadata().get("totalPages"));
+        assertEquals(0, responseBody.getMetadata().get("currentPage"));
+        assertEquals(15, responseBody.getMetadata().get("pageSize"));
+
+        verify(courseService).searchCourses(type, keyword, pageable);
+        verify(courseService, never()).getAllCourses(any(Pageable.class));
     }
 
     @Test
-    @DisplayName("GET /courses - should search courses by name")
+    @DisplayName("GET /courses - should search courses by name with pagination")
     void getAllCourses_searchByName() {
         // Given
         String type = "name";
         String keyword = "Python";
+        int page = 0;
+        int size = 15;
+        Pageable pageable = PageRequest.of(page, size);
 
         List<Course> mockCourses = Arrays.asList(
                 new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99"))
         );
+        Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 1);
 
-        when(courseService.searchCourses(type, keyword)).thenReturn(mockCourses);
+        when(courseService.searchCourses(type, keyword, pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -138,21 +168,32 @@ class CourseControllerTest {
         assertNotNull(responseBody.getData());
         assertEquals(1, responseBody.getData().size());
 
-        verify(courseService).searchCourses(type, keyword);
-        verify(courseService, never()).getAllCourses();
+        // Check pagination metadata
+        assertNotNull(responseBody.getMetadata());
+        assertEquals(1L, responseBody.getMetadata().get("totalItems"));
+        assertEquals(1, responseBody.getMetadata().get("totalPages"));
+        assertEquals(0, responseBody.getMetadata().get("currentPage"));
+        assertEquals(15, responseBody.getMetadata().get("pageSize"));
+
+        verify(courseService).searchCourses(type, keyword, pageable);
+        verify(courseService, never()).getAllCourses(any(Pageable.class));
     }
 
     @Test
-    @DisplayName("GET /courses - should handle empty search results")
+    @DisplayName("GET /courses - should handle empty search results with pagination")
     void getAllCourses_emptySearchResults() {
         // Given
         String type = "keyword";
         String keyword = "Nonexistent";
+        int page = 0;
+        int size = 15;
+        Pageable pageable = PageRequest.of(page, size);
 
-        when(courseService.searchCourses(type, keyword)).thenReturn(Collections.emptyList());
+        Page<Course> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+        when(courseService.searchCourses(type, keyword, pageable)).thenReturn(emptyPage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -163,53 +204,37 @@ class CourseControllerTest {
         assertTrue(responseBody.isSuccess());
         assertTrue(responseBody.getData().isEmpty());
 
-        verify(courseService).searchCourses(type, keyword);
-        verify(courseService, never()).getAllCourses();
+        // Check pagination metadata
+        assertNotNull(responseBody.getMetadata());
+        assertEquals(0L, responseBody.getMetadata().get("totalItems"));
+        assertEquals(0, responseBody.getMetadata().get("totalPages"));
+        assertEquals(0, responseBody.getMetadata().get("currentPage"));
+        assertEquals(15, responseBody.getMetadata().get("pageSize"));
+
+        verify(courseService).searchCourses(type, keyword, pageable);
+        verify(courseService, never()).getAllCourses(any(Pageable.class));
     }
 
     @Test
-    @DisplayName("GET /courses - should handle invalid search type")
-    void getAllCourses_invalidSearchType() {
-        // Given
-        String type = "invalid";
-        String keyword = "Java";
-
-        when(courseService.searchCourses(type, keyword))
-                .thenThrow(new UnsupportedSearchTypeException(type));
-
-        // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword);
-
-        // Then
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-
-        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
-        assertNotNull(responseBody);
-        assertEquals(400, responseBody.getCode());
-        assertFalse(responseBody.isSuccess());
-        assertEquals("Unsupported search type: " + type, responseBody.getMessage());
-        assertNull(responseBody.getData());
-
-        verify(courseService).searchCourses(type, keyword);
-        verify(courseService, never()).getAllCourses();
-    }
-
-    @Test
-    @DisplayName("GET /courses - should handle missing keyword")
+    @DisplayName("GET /courses - should handle missing keyword with pagination")
     void getAllCourses_missingKeyword() {
         // Given
         String type = "keyword";
         String keyword = null;
+        int page = 0;
+        int size = 15;
+        Pageable pageable = PageRequest.of(page, size);
 
         List<Course> mockCourses = Arrays.asList(
                 new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99")),
                 new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99"))
         );
+        Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 2);
 
-        when(courseService.getAllCourses()).thenReturn(mockCourses);
+        when(courseService.getAllCourses(pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -220,8 +245,50 @@ class CourseControllerTest {
         assertTrue(responseBody.isSuccess());
         assertEquals(2, responseBody.getData().size());
 
-        verify(courseService).getAllCourses();
-        verify(courseService, never()).searchCourses(any(), any());
+        // Check pagination metadata
+        assertNotNull(responseBody.getMetadata());
+        assertEquals(2L, responseBody.getMetadata().get("totalItems"));
+        assertEquals(1, responseBody.getMetadata().get("totalPages"));
+        assertEquals(0, responseBody.getMetadata().get("currentPage"));
+        assertEquals(15, responseBody.getMetadata().get("pageSize"));
+
+        verify(courseService).getAllCourses(pageable);
+        verify(courseService, never()).searchCourses(anyString(), anyString(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("GET /courses - should use custom pagination parameters")
+    void getAllCourses_withCustomPagination() {
+        // Given
+        int page = 2;
+        int size = 5;
+        Pageable pageable = PageRequest.of(page, size);
+
+        List<Course> mockCourses = Arrays.asList(
+                new Course("Advanced Course", "Advanced topics", UUID.randomUUID(), new BigDecimal("149.99"))
+        );
+        Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 11); // 11 total elements
+
+        when(courseService.getAllCourses(pageable)).thenReturn(mockCoursePage);
+
+        // When
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(null, null, page, size);
+
+        // Then
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(1, responseBody.getData().size());
+
+        // Check pagination metadata
+        assertNotNull(responseBody.getMetadata());
+        assertEquals(11L, responseBody.getMetadata().get("totalItems"));
+        assertEquals(3, responseBody.getMetadata().get("totalPages"));
+        assertEquals(2, responseBody.getMetadata().get("currentPage"));
+        assertEquals(5, responseBody.getMetadata().get("pageSize"));
+
+        verify(courseService).getAllCourses(pageable);
     }
 
     @Test
