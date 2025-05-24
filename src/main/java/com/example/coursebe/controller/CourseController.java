@@ -7,6 +7,9 @@ import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import com.example.coursebe.model.Enrollment;
 import com.example.coursebe.service.EnrollmentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,21 +41,31 @@ public class CourseController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<CourseResponse>>> getAllCourses(
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) String keyword
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size
     ) {
         try {
-            List<Course> courses = (type != null && keyword != null)
-                ? courseService.searchCourses(type, keyword)
-                : courseService.getAllCourses();
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Course> courses = (type != null && keyword != null)
+                ? courseService.searchCourses(type, keyword, pageable)
+                : courseService.getAllCourses(pageable);
 
-            List<CourseResponse> courseResponses = courses.stream()
+            Map<String, Object> courseMetadata = new HashMap<>();
+            courseMetadata.put("totalItems", courses.getTotalElements());
+            courseMetadata.put("totalPages", courses.getTotalPages());
+            courseMetadata.put("currentPage", courses.getNumber());
+            courseMetadata.put("pageSize", courses.getSize());
+
+            List<CourseResponse> courseResponse = courses.getContent().stream()
                 .map(this::toCourseResponse)
                 .collect(Collectors.toList());
 
             return ResponseEntity.ok(ApiResponse.success(
                 HttpStatus.OK.value(),
                 "Courses retrieved successfully.",
-                courseResponses
+                courseMetadata,
+                courseResponse
             ));
         } catch (UnsupportedSearchTypeException e) {
             return ResponseEntity
