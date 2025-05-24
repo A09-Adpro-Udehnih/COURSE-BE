@@ -3,6 +3,8 @@ package com.example.coursebe.pattern.strategy;
 import com.example.coursebe.model.Course;
 import com.example.coursebe.repository.CourseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -17,7 +19,7 @@ public class SearchByKeywordStrategy implements CourseSearchStrategy {
     }
 
     @Override
-    public List<Course> search(String keyword) {
-        return courseRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword);
+    public Page<Course> search(String keyword, Pageable pageable) {
+        return courseRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword, pageable);
     }
 }
