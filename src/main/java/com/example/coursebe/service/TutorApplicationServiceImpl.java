@@ -3,16 +3,19 @@ package com.example.coursebe.service;
 import com.example.coursebe.model.TutorApplication;
 import com.example.coursebe.repository.TutorApplicationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Implementation of TutorApplicationService
  * Uses the State pattern for managing application status transitions
+ * Implements asynchronous programming for enhanced performance
  */
 @Service
 public class TutorApplicationServiceImpl implements TutorApplicationService {
@@ -28,6 +31,12 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
     public List<TutorApplication> getAllApplications() {
         return tutorApplicationRepository.findAll();
     }
+    
+    @Override
+    @Async
+    public CompletableFuture<List<TutorApplication>> getAllApplicationsAsync() {
+        return CompletableFuture.completedFuture(tutorApplicationRepository.findAll());
+    }
 
     @Override
     public List<TutorApplication> getApplicationsByStatus(TutorApplication.Status status) {
@@ -37,6 +46,17 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         }
         
         return tutorApplicationRepository.findByStatus(status);
+    }
+    
+    @Override
+    @Async
+    public CompletableFuture<List<TutorApplication>> getApplicationsByStatusAsync(TutorApplication.Status status) {
+        // Validate input
+        if (status == null) {
+            throw new IllegalArgumentException("Status cannot be null");
+        }
+        
+        return CompletableFuture.completedFuture(tutorApplicationRepository.findByStatus(status));
     }
 
     @Override
@@ -57,6 +77,19 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         }
         
         return tutorApplicationRepository.findTopByStudentIdOrderByCreatedAtDesc(studentId);
+    }
+    
+    @Override
+    @Async
+    public CompletableFuture<Optional<TutorApplication>> getMostRecentApplicationByStudentIdAsync(UUID studentId) {
+        // Validate input
+        if (studentId == null) {
+            throw new IllegalArgumentException("Student ID cannot be null");
+        }
+        
+        return CompletableFuture.completedFuture(
+            tutorApplicationRepository.findTopByStudentIdOrderByCreatedAtDesc(studentId)
+        );
     }
 
     @Override
@@ -88,6 +121,13 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         TutorApplication application = new TutorApplication(studentId);
         return tutorApplicationRepository.save(application);
     }
+    
+    @Override
+    @Async
+    @Transactional
+    public CompletableFuture<TutorApplication> submitApplicationAsync(UUID studentId) {
+        return CompletableFuture.completedFuture(submitApplication(studentId));
+    }
 
     @Override
     @Transactional
@@ -118,6 +158,13 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         application.setStatus(status);
         TutorApplication updatedApplication = tutorApplicationRepository.save(application);
         return Optional.of(updatedApplication);
+    }
+    
+    @Override
+    @Async
+    @Transactional
+    public CompletableFuture<Optional<TutorApplication>> updateApplicationStatusAsync(UUID id, TutorApplication.Status status) {
+        return CompletableFuture.completedFuture(updateApplicationStatus(id, status));
     }
 
     /**

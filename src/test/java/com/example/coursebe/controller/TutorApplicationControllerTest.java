@@ -3,6 +3,8 @@ package com.example.coursebe.controller;
 import java.security.Principal;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -42,48 +44,55 @@ class TutorApplicationControllerTest {
 
     @Test
     @DisplayName("POST /tutors/registration - success")
-    void registerAsTutor_success() {
+    void registerAsTutor_success() throws ExecutionException, InterruptedException {
         when(tutorApplicationService.hasPendingApplication(studentId)).thenReturn(false);
+        
         TutorApplication app = new TutorApplication(studentId);
-        when(tutorApplicationService.submitApplication(studentId)).thenReturn(app);
+        when(tutorApplicationService.submitApplicationAsync(studentId))
+            .thenReturn(CompletableFuture.completedFuture(app));
 
-        ResponseEntity<?> response = controller.registerAsTutor(principal);
+        ResponseEntity<?> response = controller.registerAsTutor(principal).get();
         assertEquals(200, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("success=true"));
-        verify(tutorApplicationService).submitApplication(studentId);
+        verify(tutorApplicationService).submitApplicationAsync(studentId);
     }
 
     @Test
     @DisplayName("POST /tutors/registration - already pending")
-    void registerAsTutor_alreadyPending() {
+    void registerAsTutor_alreadyPending() throws ExecutionException, InterruptedException {
         when(tutorApplicationService.hasPendingApplication(studentId)).thenReturn(true);
 
-        ResponseEntity<?> response = controller.registerAsTutor(principal);
+        ResponseEntity<?> response = controller.registerAsTutor(principal).get();
         assertEquals(400, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("pending tutor application"));
-        verify(tutorApplicationService, never()).submitApplication(any());
+        verify(tutorApplicationService, never()).submitApplicationAsync(any());
     }
 
     @Test
     @DisplayName("GET /tutors/registration - has application")
-    void getTutorRegistrationStatus_hasApplication() {
+    void getTutorRegistrationStatus_hasApplication() throws ExecutionException, InterruptedException {
         TutorApplication app = new TutorApplication(studentId);
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(studentId)).thenReturn(Optional.of(app));
+        
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(studentId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.of(app)));
 
-        ResponseEntity<?> response = controller.getTutorRegistrationStatus(principal);
+        ResponseEntity<?> response = controller.getTutorRegistrationStatus(principal).get();
         assertEquals(200, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("PENDING"));
         assertTrue(response.getBody().toString().contains("tutorApplicationId"));
+        verify(tutorApplicationService).getMostRecentApplicationByStudentIdAsync(studentId);
     }
 
     @Test
     @DisplayName("GET /tutors/registration - no application")
-    void getTutorRegistrationStatus_noApplication() {
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(studentId)).thenReturn(Optional.empty());
+    void getTutorRegistrationStatus_noApplication() throws ExecutionException, InterruptedException {
+        when(tutorApplicationService.getMostRecentApplicationByStudentIdAsync(studentId))
+            .thenReturn(CompletableFuture.completedFuture(Optional.empty()));
 
-        ResponseEntity<?> response = controller.getTutorRegistrationStatus(principal);
+        ResponseEntity<?> response = controller.getTutorRegistrationStatus(principal).get();
         assertEquals(200, response.getStatusCodeValue());
         assertTrue(response.getBody().toString().contains("No tutor application found"));
+        verify(tutorApplicationService).getMostRecentApplicationByStudentIdAsync(studentId);
     }
 
     @Test

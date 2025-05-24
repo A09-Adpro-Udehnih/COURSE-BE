@@ -1,6 +1,7 @@
 package com.example.coursebe.controller;
 
 import com.example.coursebe.model.Course;
+import com.example.coursebe.model.TutorApplication;
 import com.example.coursebe.service.CourseService;
 import com.example.coursebe.service.TutorApplicationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/courses")
@@ -33,46 +35,58 @@ public class CourseController {
         public BigDecimal price;
     }
 
-    // POST /courses
+    // POST /courses - Async implementation
     @PostMapping
-    public ResponseEntity<?> createCourse(@RequestBody CreateCourseRequest req, Principal principal) {
+    public CompletableFuture<ResponseEntity<?>> createCourse(@RequestBody CreateCourseRequest req, Principal principal) {
         UUID tutorId = UUID.fromString(principal.getName());
+        
         // Validasi: hanya tutor dengan status ACCEPTED yang boleh membuat kursus
-        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
-        if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to create a course. Tutor application must be ACCEPTED.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
-        }
-        Course course = courseService.createCourse(req.name, req.description, tutorId, req.price);
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("code", HttpStatus.CREATED.value());
-        resp.put("success", true);
-        resp.put("message", "Course created successfully.");
-        resp.put("courseId", course.getId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+        return tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId)
+            .thenCompose(appOpt -> {
+                if (appOpt.isEmpty() || appOpt.get().getStatus() != TutorApplication.Status.ACCEPTED) {
+                    Map<String, Object> resp = new HashMap<>();
+                    resp.put("code", HttpStatus.FORBIDDEN.value());
+                    resp.put("success", false);
+                    resp.put("message", "You are not allowed to create a course. Tutor application must be ACCEPTED.");
+                    return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp));
+                }
+                
+                return courseService.createCourseAsync(req.name, req.description, tutorId, req.price)
+                    .thenApply(course -> {
+                        Map<String, Object> resp = new HashMap<>();
+                        resp.put("code", HttpStatus.CREATED.value());
+                        resp.put("success", true);
+                        resp.put("message", "Course created successfully.");
+                        resp.put("courseId", course.getId());
+                        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+                    });
+            });
     }
 
-    // GET /courses/mine
+    // GET /courses/mine - Async implementation
     @GetMapping("/mine")
-    public ResponseEntity<?> getMyCourses(Principal principal) {
+    public CompletableFuture<ResponseEntity<?>> getMyCourses(Principal principal) {
         UUID tutorId = UUID.fromString(principal.getName());
-        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
-        if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to view courses. Tutor application must be ACCEPTED.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
-        }
-        var courses = courseService.getCoursesByTutorId(tutorId);
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("code", HttpStatus.OK.value());
-        resp.put("success", true);
-        resp.put("courses", courses);
-        return ResponseEntity.ok(resp);
+        
+        return tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId)
+            .thenCompose(appOpt -> {
+                if (appOpt.isEmpty() || appOpt.get().getStatus() != TutorApplication.Status.ACCEPTED) {
+                    Map<String, Object> resp = new HashMap<>();
+                    resp.put("code", HttpStatus.FORBIDDEN.value());
+                    resp.put("success", false);
+                    resp.put("message", "You are not allowed to view courses. Tutor application must be ACCEPTED.");
+                    return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp));
+                }
+                
+                return courseService.getCoursesByTutorIdAsync(tutorId)
+                    .thenApply(courses -> {
+                        Map<String, Object> resp = new HashMap<>();
+                        resp.put("code", HttpStatus.OK.value());
+                        resp.put("success", true);
+                        resp.put("courses", courses);
+                        return ResponseEntity.ok(resp);
+                    });
+            });
     }
 
     // DELETE /courses/{courseId}
@@ -81,7 +95,7 @@ public class CourseController {
         UUID tutorId = UUID.fromString(principal.getName());
         // Validasi: hanya tutor yang memiliki kursus dan status ACCEPTED yang bisa hapus
         var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
-        if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
+        if (appOpt.isEmpty() || appOpt.get().getStatus() != TutorApplication.Status.ACCEPTED) {
             Map<String, Object> resp = new HashMap<>();
             resp.put("code", HttpStatus.FORBIDDEN.value());
             resp.put("success", false);
@@ -111,32 +125,41 @@ public class CourseController {
         }
     }
 
-    // GET /courses/{courseId}/students
+    // GET /courses/{courseId}/students - Async implementation
     @GetMapping("/{courseId}/students")
-    public ResponseEntity<?> getEnrolledStudents(@PathVariable UUID courseId, Principal principal) {
+    public CompletableFuture<ResponseEntity<?>> getEnrolledStudents(@PathVariable UUID courseId, Principal principal) {
         UUID tutorId = UUID.fromString(principal.getName());
+        
         // Validasi: hanya tutor owner & status ACCEPTED yang bisa akses
-        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
-        if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to view students. Tutor application must be ACCEPTED.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
-        }
-        var courseOpt = courseService.getCourseById(courseId);
-        if (courseOpt.isEmpty() || !courseOpt.get().getTutorId().equals(tutorId)) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to view students. Only the owner can view.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
-        }
-        var students = courseService.getEnrolledStudents(courseId);
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("code", HttpStatus.OK.value());
-        resp.put("success", true);
-        resp.put("students", students);
-        return ResponseEntity.ok(resp);
+        return tutorApplicationService.getMostRecentApplicationByStudentIdAsync(tutorId)
+            .thenCompose(appOpt -> {
+                if (appOpt.isEmpty() || appOpt.get().getStatus() != TutorApplication.Status.ACCEPTED) {
+                    Map<String, Object> resp = new HashMap<>();
+                    resp.put("code", HttpStatus.FORBIDDEN.value());
+                    resp.put("success", false);
+                    resp.put("message", "You are not allowed to view students. Tutor application must be ACCEPTED.");
+                    return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp));
+                }
+                
+                return courseService.getCourseByIdAsync(courseId)
+                    .thenCompose(courseOpt -> {
+                        if (courseOpt.isEmpty() || !courseOpt.get().getTutorId().equals(tutorId)) {
+                            Map<String, Object> resp = new HashMap<>();
+                            resp.put("code", HttpStatus.FORBIDDEN.value());
+                            resp.put("success", false);
+                            resp.put("message", "You are not allowed to view students. Only the owner can view.");
+                            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp));
+                        }
+                        
+                        return courseService.getEnrolledStudentsAsync(courseId)
+                            .thenApply(students -> {
+                                Map<String, Object> resp = new HashMap<>();
+                                resp.put("code", HttpStatus.OK.value());
+                                resp.put("success", true);
+                                resp.put("students", students);
+                                return ResponseEntity.ok(resp);
+                            });
+                    });
+            });
     }
 }
