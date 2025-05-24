@@ -31,6 +31,10 @@ import com.example.coursebe.model.Course;
 import com.example.coursebe.pattern.strategy.CourseSearchContext;
 import com.example.coursebe.pattern.strategy.CourseSearchStrategy;
 import com.example.coursebe.repository.CourseRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 public class CourseServiceImplTest {
@@ -80,18 +84,41 @@ public class CourseServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should get all courses")
-    void getAllCourses() {
+    @DisplayName("Should get all courses with pagination")
+    void getAllCoursesWithPagination() {
         // Given
-        when(courseRepository.findAll()).thenReturn(testCourses);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> coursePage = new PageImpl<>(testCourses, pageable, 2);
+        when(courseRepository.findAll(any(Pageable.class))).thenReturn(coursePage);
 
         // When
-        List<Course> result = courseService.getAllCourses();
+        Page<Course> result = courseService.getAllCourses(pageable);
 
         // Then
-        assertEquals(2, result.size());
-        assertEquals(testCourses, result);
-        verify(courseRepository).findAll();
+        assertEquals(2, result.getContent().size());
+        assertEquals(2, result.getTotalElements());
+        assertEquals(1, result.getTotalPages());
+        assertEquals(0, result.getNumber());
+        assertEquals(testCourses, result.getContent());
+        verify(courseRepository).findAll(pageable);
+    }
+
+    @Test
+    @DisplayName("Should get empty page when no courses exist")
+    void getAllCoursesWithPaginationEmpty() {
+        // Given
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+        when(courseRepository.findAll(any(Pageable.class))).thenReturn(emptyPage);
+
+        // When
+        Page<Course> result = courseService.getAllCourses(pageable);
+
+        // Then
+        assertTrue(result.isEmpty());
+        assertEquals(0, result.getTotalElements());
+        assertEquals(0, result.getTotalPages());
+        verify(courseRepository).findAll(pageable);
     }
 
     @Test
@@ -140,47 +167,51 @@ public class CourseServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should search courses using keyword strategy")
+    @DisplayName("Should search courses using keyword strategy with pagination")
     void searchCourses_WithKeywordStrategy() {
         // Given
         String type = "keyword";
         String keyword = "Java";
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> keywordPage = new PageImpl<>(List.of(testCourses.get(1)), pageable, 1);
 
         when(courseSearchContext.isValidStrategy(type)).thenReturn(true);
         when(courseSearchContext.getStrategy(type)).thenReturn(mockSearchStrategy);
-        when(mockSearchStrategy.search(keyword)).thenReturn(Arrays.asList(testCourses.get(1)));
+        when(mockSearchStrategy.search(keyword, pageable)).thenReturn(keywordPage);
 
         // When
-        List<Course> result = courseService.searchCourses(type, keyword);
+        Page<Course> result = courseService.searchCourses(type, keyword, pageable);
 
         // Then
-        assertEquals(1, result.size());
-        assertEquals("Java Course", result.get(0).getName());
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Java Course", result.getContent().get(0).getName());
         verify(courseSearchContext).isValidStrategy(type);
         verify(courseSearchContext).getStrategy(type);
-        verify(mockSearchStrategy).search(keyword);
+        verify(mockSearchStrategy).search(keyword, pageable);
     }
 
     @Test
-    @DisplayName("Should search courses using name strategy")
+    @DisplayName("Should search courses using name strategy with pagination")
     void searchCourses_WithNameStrategy() {
         // Given
         String type = "name";
         String keyword = "Test";
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> namePage = new PageImpl<>(List.of(testCourses.get(0)), pageable, 1);
 
         when(courseSearchContext.isValidStrategy(type)).thenReturn(true);
         when(courseSearchContext.getStrategy(type)).thenReturn(mockSearchStrategy);
-        when(mockSearchStrategy.search(keyword)).thenReturn(Arrays.asList(testCourses.get(0)));
+        when(mockSearchStrategy.search(keyword, pageable)).thenReturn(namePage);
 
         // When
-        List<Course> result = courseService.searchCourses(type, keyword);
+        Page<Course> result = courseService.searchCourses(type, keyword, pageable);
 
         // Then
-        assertEquals(1, result.size());
-        assertEquals("Test Course", result.get(0).getName());
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Test Course", result.getContent().get(0).getName());
         verify(courseSearchContext).isValidStrategy(type);
         verify(courseSearchContext).getStrategy(type);
-        verify(mockSearchStrategy).search(keyword);
+        verify(mockSearchStrategy).search(keyword, pageable);
     }
 
     @Test
@@ -189,38 +220,42 @@ public class CourseServiceImplTest {
         // Given
         String type = "invalid";
         String keyword = "Course";
+        Pageable pageable = PageRequest.of(0, 10);
 
         when(courseSearchContext.isValidStrategy(type)).thenReturn(false);
 
         // When & Then
         Exception exception = assertThrows(UnsupportedSearchTypeException.class, () -> {
-            courseService.searchCourses(type, keyword);
+            courseService.searchCourses(type, keyword, pageable);
         });
 
         verify(courseSearchContext).isValidStrategy(type);
         verify(courseSearchContext, never()).getStrategy(anyString());
-        verify(mockSearchStrategy, never()).search(anyString());
+        verify(mockSearchStrategy, never()).search(anyString(), any(Pageable.class));
     }
 
     @Test
-    @DisplayName("Should handle empty search results")
+    @DisplayName("Should handle empty search results with pagination")
     void searchCourses_WithNoResults() {
         // Given
         String type = "keyword";
         String keyword = "Nonexistent";
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> emptyPage = new PageImpl<>(List.of(), pageable, 0);
 
         when(courseSearchContext.isValidStrategy(type)).thenReturn(true);
         when(courseSearchContext.getStrategy(type)).thenReturn(mockSearchStrategy);
-        when(mockSearchStrategy.search(keyword)).thenReturn(List.of());
+        when(mockSearchStrategy.search(keyword, pageable)).thenReturn(emptyPage);
 
         // When
-        List<Course> result = courseService.searchCourses(type, keyword);
+        Page<Course> result = courseService.searchCourses(type, keyword, pageable);
 
         // Then
         assertTrue(result.isEmpty());
+        assertEquals(0, result.getTotalElements());
         verify(courseSearchContext).isValidStrategy(type);
         verify(courseSearchContext).getStrategy(type);
-        verify(mockSearchStrategy).search(keyword);
+        verify(mockSearchStrategy).search(keyword, pageable);
     }
 
     @Test
