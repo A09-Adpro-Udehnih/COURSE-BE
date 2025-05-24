@@ -1,0 +1,117 @@
+name: CI/CD Pipeline
+
+on:
+  push: # Main branch only (look at validate job).
+    tags:
+      - "v*"
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ secrets.DOCKER_HUB_REPO_NAME }}
+
+jobs:
+  validate:
+    name: Validate Tag on Main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Verify tag is from main branch
+        run: |
+          TAG_COMMIT=$GITHUB_SHA
+          MAIN_COMMIT=$(git ls-remote origin refs/heads/main | cut -f1)
+
+          echo "Tag commit:  $TAG_COMMIT"
+          echo "Main commit: $MAIN_COMMIT"
+
+          if [ "$TAG_COMMIT" != "$MAIN_COMMIT" ]; then
+            echo "Tag does not point to main branch. Failing..."
+            exit 1
+          fi
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-22.04
+    needs: validate
+    if: ${{ success() }}
+
+    steps:
+      - name: Check out the Git repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java toolchain
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "gradle"
+
+      - name: Configure gradlew permission
+        run: chmod +x gradlew
+
+      - name: Run unit tests
+        run: ./gradlew test
+
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: ${{ success() && (startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')) }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set image tag from Git ref
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="${GITHUB_SHA::7}"
+          fi
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "Using image tag: $TAG"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.TAG }}
+            ${{ env.IMAGE_NAME }}:latest
+
+      - name: Deploy to EC2 Server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            echo "Pulling new Docker image..."
+            docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} -p ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+            docker pull ${{ env.IMAGE_NAME }}:${{ env.TAG }}
+
+            echo "Saving current image for rollback..."
+            CURRENT_IMAGE=$(docker inspect --format='{{.Config.Image}}' web_server || echo "none")
+            echo "$CURRENT_IMAGE" > ~/rollback_image.txt
+
+            echo "Stopping and removing current container..."
+            docker rm -f web_server || true
+
+            echo "Starting new container..."
+            docker run -d \
+              --name web_server \
+              -p 8081:8081 \
+              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              -e DATABASE_USERNAME="${{ secrets.DATABASE_USERNAME }}" \
+              -e DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
+              -e JWT_TOKEN="${{ secrets.JWT_TOKEN }}" \
+              ${{ env.IMAGE_NAME }}:${{ env.TAG }}
+
+            echo "Deployment successful."

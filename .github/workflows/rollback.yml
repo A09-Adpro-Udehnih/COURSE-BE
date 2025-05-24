@@ -1,0 +1,50 @@
+name: Manual Rollback
+
+on:
+  workflow_dispatch:  # Allows manual trigger via GitHub UI
+
+jobs:
+  rollback:
+    name: Rollback to Previous Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute rollback on EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+
+            echo "Checking for rollback file..."
+            if [ ! -f ~/rollback_image.txt ]; then
+              echo "Rollback file not found. Aborting."
+              exit 1
+            fi
+
+            echo "Reading previous image tag from rollback file..."
+            ROLLBACK_IMAGE=$(cat ~/rollback_image.txt)
+
+            if [ "$ROLLBACK_IMAGE" = "none" ] || [ -z "$ROLLBACK_IMAGE" ]; then
+              echo "No rollback image found or it is invalid. Aborting."
+              exit 1
+            fi
+
+            echo "Rolling back to: $ROLLBACK_IMAGE"
+
+            echo "Stopping and removing current container (if running)..."
+            docker rm -f web_server || true
+
+            echo "Starting container with rollback image..."
+            docker run -d \
+              --name web_server \
+              -p 8080:8080 \
+              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              -e DATABASE_USERNAME="${{ secrets.DATABASE_USERNAME }}" \
+              -e DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
+              -e JWT_TOKEN="${{ secrets.JWT_TOKEN }}" \
+              $ROLLBACK_IMAGE
+
+            echo "Rollback successful."
