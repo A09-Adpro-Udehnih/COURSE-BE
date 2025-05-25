@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.UUID;
 
 @Component("keyword")
 public class SearchByKeywordStrategy implements CourseSearchStrategy {
@@ -21,5 +22,10 @@ public class SearchByKeywordStrategy implements CourseSearchStrategy {
     @Override
     public Page<Course> search(String keyword, Pageable pageable) {
         return courseRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword, pageable);
+    }
+
+    @Override
+    public Page<Course> searchForUser(UUID userId, String keyword, Pageable pageable) {
+        return courseRepository.findByEnrollmentsStudentIdAndNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(userId, keyword, keyword, pageable);
     }
 }
