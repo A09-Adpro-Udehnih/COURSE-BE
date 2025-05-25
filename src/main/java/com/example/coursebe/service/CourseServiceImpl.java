@@ -56,6 +56,26 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
+    public Page<Course> getEnrolledCourses(UUID userId, Pageable pageable) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        return courseRepository.findByEnrollmentsStudentId(userId, pageable);
+    }
+
+    @Override
+    public Page<Course> searchEnrolledCourses(UUID userId, String type, String keyword, Pageable pageable) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        if (!courseSearchContext.isValidStrategy(type)) {
+            throw new UnsupportedSearchTypeException(type);
+        }
+        CourseSearchStrategy strategy = courseSearchContext.getStrategy(type);
+        return strategy.searchForUser(userId, keyword, pageable);
+    }
+
+    @Override
     @Transactional
     public Course createCourse(String name, String description, UUID tutorId, BigDecimal price) {
         // Validate inputs
