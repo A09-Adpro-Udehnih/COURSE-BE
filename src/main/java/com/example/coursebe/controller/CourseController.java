@@ -1,6 +1,7 @@
 package com.example.coursebe.controller;
 
 import com.example.coursebe.common.ApiResponse;
+import com.example.coursebe.dto.CourseEnrolledResponse;
 import com.example.coursebe.dto.CourseResponse;
 import com.example.coursebe.dto.EnrollmentResponse;
 import com.example.coursebe.exception.UnsupportedSearchTypeException;
@@ -20,6 +21,8 @@ import com.example.coursebe.service.TutorApplicationService;
 import com.example.coursebe.dto.CreateCourseRequest;
 
 import java.security.Principal;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -84,34 +87,89 @@ public class CourseController {
         }
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<CourseResponse>> getCourseById(@PathVariable UUID id) {
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<ApiResponse<List<CourseResponse>>> getUserEnrolledCourses(
+            @PathVariable UUID userId,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size) {
         try {
-            Optional<Course> course = courseService.getCourseById(id);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Course> enrolledCourses = (type != null && keyword != null)
+                    ? courseService.searchEnrolledCourses(userId, type, keyword, pageable)
+                    : courseService.getEnrolledCourses(userId, pageable);
 
-            if (course.isEmpty()) {
-                return ResponseEntity
-                    .status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.error(
-                        HttpStatus.NOT_FOUND.value(),
-                        "Course not found."
-                    ));
-            }
+            Map<String, Object> courseMetadata = new HashMap<>();
+            courseMetadata.put("totalItems", enrolledCourses.getTotalElements());
+            courseMetadata.put("totalPages", enrolledCourses.getTotalPages());
+            courseMetadata.put("currentPage", enrolledCourses.getNumber());
+            courseMetadata.put("pageSize", enrolledCourses.getSize());
 
-            CourseResponse courseResponse = this.toCourseResponse(course.get());
+            List<CourseResponse> courseResponse = enrolledCourses.getContent().stream()
+                    .map(this::toCourseResponse)
+                    .collect(Collectors.toList());
 
             return ResponseEntity.ok(ApiResponse.success(
-                HttpStatus.OK.value(),
-                "Course retrieved successfully.",
-                courseResponse
+                    HttpStatus.OK.value(),
+                    "User enrolled courses retrieved successfully.",
+                    courseMetadata,
+                    courseResponse
             ));
         } catch (Exception e) {
             return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(
-                    HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                    "An error occurred while retrieving the course."
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(
+                            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                            "An error occurred while fetching user enrolled courses: " + e.getMessage()
+                    ));
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<?>> getCourseById(
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID userId
+    ) {
+        try {
+            Optional<Course> courseOpt = courseService.getCourseById(id);
+
+            if (courseOpt.isEmpty()) {
+                return ResponseEntity
+                        .status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error(
+                                HttpStatus.NOT_FOUND.value(),
+                                "Course not found."
+                        ));
+            }
+
+            Course course = courseOpt.get();
+
+            // If userId is provided, check enrollment status
+            if (userId != null && enrollmentService.isEnrolled(userId, id)) {
+                // User is enrolled, return CourseEnrolledResponse with articles
+                CourseEnrolledResponse response = this.toCourseEnrolledResponse(course, userId);
+                return ResponseEntity.ok(ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "Enrolled course retrieved successfully.",
+                        response
                 ));
+            } else {
+                // User is not enrolled or userId not provided
+                CourseResponse response = this.toCourseResponse(course);
+                return ResponseEntity.ok(ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "Course retrieved successfully.",
+                        response
+                ));
+            }
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(
+                            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                            "An error occurred while retrieving the course."
+                    ));
         }
     }
 
@@ -167,7 +225,6 @@ public class CourseController {
     @PostMapping
     public ResponseEntity<?> createCourse(@RequestBody CreateCourseRequest req, Principal principal) {
         UUID tutorId = UUID.fromString(principal.getName());
-
         // Validasi: hanya tutor dengan status ACCEPTED yang boleh membuat kursus
         var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
         if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
@@ -296,6 +353,41 @@ public class CourseController {
                 sectionResponses
         );
     };
+
+    private CourseEnrolledResponse toCourseEnrolledResponse(Course course, UUID userId) {
+        List<CourseEnrolledResponse.Section> sectionResponses = course.getSections().stream()
+                .map(section -> {
+                    List<CourseEnrolledResponse.Article> articleResponses = section.getArticles().stream()
+                            .map(article -> new CourseEnrolledResponse.Article(
+                                    article.getId(),
+                                    article.getTitle()
+                            ))
+                            .collect(Collectors.toList());
+
+                    return new CourseEnrolledResponse.Section(
+                            section.getId(),
+                            section.getTitle(),
+                            articleResponses
+                    );
+                })
+                .collect(Collectors.toList());
+
+        // Get enrollment date
+        LocalDateTime enrollmentDate = course.getEnrollments().stream()
+                .filter(enrollment -> enrollment.getStudentId().equals(userId))
+                .findFirst()
+                .map(Enrollment::getEnrollmentDate)
+                .orElse(null);
+
+        return new CourseEnrolledResponse(
+                course.getId(),
+                course.getName(),
+                course.getDescription(),
+                null, // TODO: tutor name
+                enrollmentDate,
+                sectionResponses
+        );
+    }
 
     private EnrollmentResponse toEnrollmentResponse(Enrollment enrollment) {
         Course course = enrollment.getCourse();
