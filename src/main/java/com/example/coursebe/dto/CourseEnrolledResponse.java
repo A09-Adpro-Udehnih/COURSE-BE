@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -18,7 +19,7 @@ public class CourseEnrolledResponse {
     private String name;
     private String description;
     private String tutor;
-    private Date enrollmentDate;
+    private LocalDateTime enrollmentDate;
     private List<Section> sections;
 
     @Getter
