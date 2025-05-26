@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
@@ -19,6 +20,7 @@ public class CourseEnrolledResponse {
     private String name;
     private String description;
     private String tutor;
+    private BigDecimal price;
     private LocalDateTime enrollmentDate;
     private List<Section> sections;
 

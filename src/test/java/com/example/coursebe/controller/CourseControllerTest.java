@@ -60,9 +60,10 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /courses - should return all courses with pagination when no search parameters")
+    @DisplayName("GET /courses?userId={userId} - should return all courses with pagination when no search parameters")
     void getAllCourses_noSearchParameters() {
         // Given
+        UUID userId = UUID.randomUUID();
         int page = 0;
         int size = 15;
         Pageable pageable = PageRequest.of(page, size);
@@ -74,7 +75,7 @@ class CourseControllerTest {
         when(courseService.getAllCourses(pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(null, null, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, null, null, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -99,9 +100,10 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /courses?keyword=Java - should search courses by keyword with pagination")
+    @DisplayName("GET /courses?userId={userId}&type=keyword&keyword=Java - should search courses by keyword with pagination")
     void getAllCourses_searchByKeyword() {
         // Given
+        UUID userId = UUID.randomUUID();
         String type = "keyword";
         String keyword = "Java";
         int page = 0;
@@ -116,7 +118,7 @@ class CourseControllerTest {
         when(courseService.searchCourses(type, keyword, pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type, keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -141,9 +143,10 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /courses - should search courses by name with pagination")
+    @DisplayName("GET /courses?userId={userId}&type=name&keyword=Python - should search courses by name with pagination")
     void getAllCourses_searchByName() {
         // Given
+        UUID userId = UUID.randomUUID();
         String type = "name";
         String keyword = "Python";
         int page = 0;
@@ -158,7 +161,7 @@ class CourseControllerTest {
         when(courseService.searchCourses(type, keyword, pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type, keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -182,9 +185,10 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /courses - should handle empty search results with pagination")
+    @DisplayName("GET /courses?userId={userId}&type=keyword&keyword=Nonexistent - should handle empty search results with pagination")
     void getAllCourses_emptySearchResults() {
         // Given
+        UUID userId = UUID.randomUUID();
         String type = "keyword";
         String keyword = "Nonexistent";
         int page = 0;
@@ -195,7 +199,7 @@ class CourseControllerTest {
         when(courseService.searchCourses(type, keyword, pageable)).thenReturn(emptyPage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type, keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -218,9 +222,10 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /courses - should handle missing keyword with pagination")
+    @DisplayName("GET /courses?userId={userId}&type=keyword - should handle missing keyword with pagination")
     void getAllCourses_missingKeyword() {
         // Given
+        UUID userId = UUID.randomUUID();
         String type = "keyword";
         String keyword = null;
         int page = 0;
@@ -236,7 +241,7 @@ class CourseControllerTest {
         when(courseService.getAllCourses(pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(type, keyword, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type, keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -259,9 +264,10 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /courses - should use custom pagination parameters")
+    @DisplayName("GET /courses?userId={userId} - should use custom pagination parameters")
     void getAllCourses_withCustomPagination() {
         // Given
+        UUID userId = UUID.randomUUID();
         int page = 2;
         int size = 5;
         Pageable pageable = PageRequest.of(page, size);
@@ -274,7 +280,7 @@ class CourseControllerTest {
         when(courseService.getAllCourses(pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(null, null, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, null, null, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -294,8 +300,8 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /courses/user/{userId} - should return enrolled courses for a user")
-    void getUserEnrolledCourses_success() {
+    @DisplayName("GET /courses/my-courses?userId={userId} - should return enrolled courses for a user")
+    void getMyAllCourses_success() {
         // Given
         UUID userId = UUID.randomUUID();
         int page = 0;
@@ -311,13 +317,13 @@ class CourseControllerTest {
         when(courseService.getEnrolledCourses(userId, pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response =
-                courseController.getUserEnrolledCourses(userId, null, null, page, size);
+        ResponseEntity<ApiResponse<List<CourseEnrolledResponse>>> response =
+                courseController.getMyAllCourses(userId, null, null, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
+        ApiResponse<List<CourseEnrolledResponse>> responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(200, responseBody.getCode());
         assertTrue(responseBody.isSuccess());
@@ -328,6 +334,10 @@ class CourseControllerTest {
         // Check course data
         assertEquals("Java Course", responseBody.getData().get(0).getName());
         assertEquals("Python Course", responseBody.getData().get(1).getName());
+
+        // Verify price field exists in response
+        assertNotNull(responseBody.getData().get(0).getPrice());
+        assertEquals(new BigDecimal("99.99"), responseBody.getData().get(0).getPrice());
 
         // Check pagination metadata
         assertNotNull(responseBody.getMetadata());
@@ -341,8 +351,8 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /courses/user/{userId}?type=name&keyword=Java - should search enrolled courses by name")
-    void getUserEnrolledCourses_searchByName() {
+    @DisplayName("GET /courses/my-courses?userId={userId}&type=name&keyword=Java - should search enrolled courses by name")
+    void getMyAllCourses_searchByName() {
         // Given
         UUID userId = UUID.randomUUID();
         String type = "name";
@@ -359,13 +369,13 @@ class CourseControllerTest {
         when(courseService.searchEnrolledCourses(userId, type, keyword, pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response =
-                courseController.getUserEnrolledCourses(userId, type, keyword, page, size);
+        ResponseEntity<ApiResponse<List<CourseEnrolledResponse>>> response =
+                courseController.getMyAllCourses(userId, type, keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
+        ApiResponse<List<CourseEnrolledResponse>> responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(200, responseBody.getCode());
         assertTrue(responseBody.isSuccess());
@@ -383,73 +393,6 @@ class CourseControllerTest {
 
         verify(courseService).searchEnrolledCourses(userId, type, keyword, pageable);
         verify(courseService, never()).getEnrolledCourses(any(), any());
-    }
-
-    @Test
-    @DisplayName("GET /courses/user/{userId} - should handle empty enrolled courses")
-    void getUserEnrolledCourses_empty() {
-        // Given
-        UUID userId = UUID.randomUUID();
-        int page = 0;
-        int size = 15;
-        Pageable pageable = PageRequest.of(page, size);
-
-        Page<Course> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
-        when(courseService.getEnrolledCourses(userId, pageable)).thenReturn(emptyPage);
-
-        // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response =
-                courseController.getUserEnrolledCourses(userId, null, null, page, size);
-
-        // Then
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-
-        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
-        assertNotNull(responseBody);
-        assertEquals(200, responseBody.getCode());
-        assertTrue(responseBody.isSuccess());
-        assertEquals("User enrolled courses retrieved successfully.", responseBody.getMessage());
-        assertTrue(responseBody.getData().isEmpty());
-
-        // Verify empty pagination metadata
-        assertNotNull(responseBody.getMetadata());
-        assertEquals(0L, responseBody.getMetadata().get("totalItems"));
-        assertEquals(0, responseBody.getMetadata().get("totalPages"));
-        assertEquals(0, responseBody.getMetadata().get("currentPage"));
-        assertEquals(15, responseBody.getMetadata().get("pageSize"));
-
-        verify(courseService).getEnrolledCourses(userId, pageable);
-        verify(courseService, never()).searchEnrolledCourses(any(), anyString(), anyString(), any());
-    }
-
-    @Test
-    @DisplayName("GET /courses/user/{userId} - should handle exceptions")
-    void getUserEnrolledCourses_exception() {
-        // Given
-        UUID userId = UUID.randomUUID();
-        int page = 0;
-        int size = 15;
-
-        when(courseService.getEnrolledCourses(userId, PageRequest.of(page, size)))
-                .thenThrow(new RuntimeException("Test exception"));
-
-        // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response =
-                courseController.getUserEnrolledCourses(userId, null, null, page, size);
-
-        // Then
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-
-        ApiResponse<List<CourseResponse>> responseBody = response.getBody();
-        assertNotNull(responseBody);
-        assertEquals(500, responseBody.getCode());
-        assertFalse(responseBody.isSuccess());
-        assertTrue(responseBody.getMessage().contains("An error occurred while fetching user enrolled courses"));
-        assertTrue(responseBody.getMessage().contains("Test exception"));
-        assertNull(responseBody.getData());
-
-        verify(courseService).getEnrolledCourses(userId, PageRequest.of(page, size));
-        verify(courseService, never()).searchEnrolledCourses(any(), anyString(), anyString(), any());
     }
 
     @Test
@@ -473,31 +416,75 @@ class CourseControllerTest {
         when(enrollmentService.isEnrolled(userId, courseId)).thenReturn(true);
 
         // When
-        ResponseEntity<ApiResponse<?>> response = courseController.getCourseById(courseId, userId);
+        ResponseEntity<ApiResponse<CourseResponse>> response = courseController.getCourseById(courseId, userId);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        ApiResponse<?> responseBody = response.getBody();
+        ApiResponse<CourseResponse> responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(200, responseBody.getCode());
         assertTrue(responseBody.isSuccess());
-        assertEquals("Enrolled course retrieved successfully.", responseBody.getMessage());
+        assertEquals("Course retrieved successfully.", responseBody.getMessage());
 
-        // Verify it's a CourseEnrolledResponse
-        assertTrue(responseBody.getData() instanceof CourseEnrolledResponse);
-        CourseEnrolledResponse enrolledResponse = (CourseEnrolledResponse) responseBody.getData();
-        assertEquals(courseId, enrolledResponse.getId());
-        assertEquals("Java Course", enrolledResponse.getName());
-        assertEquals("Learn Java", enrolledResponse.getDescription());
+        CourseResponse courseResponse = responseBody.getData();
+        assertNotNull(courseResponse);
+        assertEquals(courseId, courseResponse.getId());
+        assertEquals("Java Course", courseResponse.getName());
+        assertEquals("Learn Java", courseResponse.getDescription());
+        assertEquals(new BigDecimal("99.99"), courseResponse.getPrice());
+        assertTrue(courseResponse.isEnrolled());
 
         verify(courseService).getCourseById(courseId);
         verify(enrollmentService).isEnrolled(userId, courseId);
     }
 
     @Test
-    @DisplayName("GET /courses/{id}?userId={userId} - should return regular course when not enrolled")
-    void getCourseById_withUserIdNotEnrolled() {
+    @DisplayName("GET /courses/my-courses/{id}?userId={userId} - should return enrolled course details")
+    void getMyCourseById_whenEnrolled() {
+        // Given
+        UUID courseId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Course mockCourse = new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99"));
+
+        // Use reflection to set ID
+        try {
+            java.lang.reflect.Field field = Course.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(mockCourse, courseId);
+        } catch (Exception e) {
+            fail("Failed to set course ID");
+        }
+
+        when(courseService.getCourseById(courseId)).thenReturn(Optional.of(mockCourse));
+        when(enrollmentService.isEnrolled(userId, courseId)).thenReturn(true);
+
+        // When
+        ResponseEntity<ApiResponse<CourseEnrolledResponse>> response = courseController.getMyCourseById(courseId, userId);
+
+        // Then
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        ApiResponse<CourseEnrolledResponse> responseBody = response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(200, responseBody.getCode());
+        assertTrue(responseBody.isSuccess());
+        assertEquals("Enrolled course retrieved successfully.", responseBody.getMessage());
+
+        CourseEnrolledResponse enrolledResponse = responseBody.getData();
+        assertNotNull(enrolledResponse);
+        assertEquals(courseId, enrolledResponse.getId());
+        assertEquals("Java Course", enrolledResponse.getName());
+        assertEquals("Learn Java", enrolledResponse.getDescription());
+        assertEquals(new BigDecimal("99.99"), enrolledResponse.getPrice());
+
+        verify(courseService).getCourseById(courseId);
+        verify(enrollmentService).isEnrolled(userId, courseId);
+    }
+
+    @Test
+    @DisplayName("GET /courses/my-courses/{id}?userId={userId} - should return forbidden when not enrolled")
+    void getMyCourseById_whenNotEnrolled() {
         // Given
         UUID courseId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -516,69 +503,20 @@ class CourseControllerTest {
         when(enrollmentService.isEnrolled(userId, courseId)).thenReturn(false);
 
         // When
-        ResponseEntity<ApiResponse<?>> response = courseController.getCourseById(courseId, userId);
+        ResponseEntity<ApiResponse<CourseEnrolledResponse>> response = courseController.getMyCourseById(courseId, userId);
 
         // Then
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
 
-        ApiResponse<?> responseBody = response.getBody();
+        ApiResponse<CourseEnrolledResponse> responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals(200, responseBody.getCode());
-        assertTrue(responseBody.isSuccess());
-        assertEquals("Course retrieved successfully.", responseBody.getMessage());
-
-        // Verify it's a CourseResponse
-        assertTrue(responseBody.getData() instanceof CourseResponse);
-        CourseResponse courseResponse = (CourseResponse) responseBody.getData();
-        assertEquals(courseId, courseResponse.getId());
-        assertEquals("Java Course", courseResponse.getName());
-        assertEquals("Learn Java", courseResponse.getDescription());
-        assertEquals(new BigDecimal("99.99"), courseResponse.getPrice());
+        assertEquals(403, responseBody.getCode());
+        assertFalse(responseBody.isSuccess());
+        assertEquals("You are not enrolled in this course.", responseBody.getMessage());
+        assertNull(responseBody.getData());
 
         verify(courseService).getCourseById(courseId);
         verify(enrollmentService).isEnrolled(userId, courseId);
-    }
-
-    @Test
-    @DisplayName("GET /courses/{id} - should return regular course when no userId provided")
-    void getCourseById_withoutUserId() {
-        // Given
-        UUID courseId = UUID.randomUUID();
-        Course mockCourse = new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99"));
-
-        // Use reflection to set ID
-        try {
-            java.lang.reflect.Field field = Course.class.getDeclaredField("id");
-            field.setAccessible(true);
-            field.set(mockCourse, courseId);
-        } catch (Exception e) {
-            fail("Failed to set course ID");
-        }
-
-        when(courseService.getCourseById(courseId)).thenReturn(Optional.of(mockCourse));
-
-        // When
-        ResponseEntity<ApiResponse<?>> response = courseController.getCourseById(courseId, null);
-
-        // Then
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-
-        ApiResponse<?> responseBody = response.getBody();
-        assertNotNull(responseBody);
-        assertEquals(200, responseBody.getCode());
-        assertTrue(responseBody.isSuccess());
-        assertEquals("Course retrieved successfully.", responseBody.getMessage());
-
-        // Verify it's a CourseResponse
-        assertTrue(responseBody.getData() instanceof CourseResponse);
-        CourseResponse courseResponse = (CourseResponse) responseBody.getData();
-        assertEquals(courseId, courseResponse.getId());
-        assertEquals("Java Course", courseResponse.getName());
-        assertEquals("Learn Java", courseResponse.getDescription());
-        assertEquals(new BigDecimal("99.99"), courseResponse.getPrice());
-
-        verify(courseService).getCourseById(courseId);
-        verify(enrollmentService, never()).isEnrolled(any(), any());
     }
 
     @Test

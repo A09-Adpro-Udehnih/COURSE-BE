@@ -43,6 +43,7 @@ public class CourseController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<CourseResponse>>> getAllCourses(
+            @RequestParam() UUID userId,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
@@ -61,8 +62,8 @@ public class CourseController {
             courseMetadata.put("pageSize", courses.getSize());
 
             List<CourseResponse> courseResponse = courses.getContent().stream()
-                .map(this::toCourseResponse)
-                .collect(Collectors.toList());
+                    .map(course -> toCourseResponse(course, userId))
+                    .collect(Collectors.toList());
 
             return ResponseEntity.ok(ApiResponse.success(
                 HttpStatus.OK.value(),
@@ -87,9 +88,44 @@ public class CourseController {
         }
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<ApiResponse<List<CourseResponse>>> getUserEnrolledCourses(
-            @PathVariable UUID userId,
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<CourseResponse>> getCourseById(
+            @PathVariable UUID id,
+            @RequestParam UUID userId
+    ) {
+        try {
+            Optional<Course> courseOpt = courseService.getCourseById(id);
+
+            if (courseOpt.isEmpty()) {
+                return ResponseEntity
+                        .status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error(
+                                HttpStatus.NOT_FOUND.value(),
+                                "Course not found."
+                        ));
+            }
+
+            Course course = courseOpt.get();
+
+            CourseResponse response = this.toCourseResponse(course, userId);
+            return ResponseEntity.ok(ApiResponse.success(
+                    HttpStatus.OK.value(),
+                    "Course retrieved successfully.",
+                    response
+            ));
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(
+                            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                            "An error occurred while retrieving the course: " + e.getMessage()
+                    ));
+        }
+    }
+
+    @GetMapping("/my-courses")
+    public ResponseEntity<ApiResponse<List<CourseEnrolledResponse>>> getMyAllCourses(
+            @RequestParam() UUID userId,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
@@ -106,8 +142,8 @@ public class CourseController {
             courseMetadata.put("currentPage", enrolledCourses.getNumber());
             courseMetadata.put("pageSize", enrolledCourses.getSize());
 
-            List<CourseResponse> courseResponse = enrolledCourses.getContent().stream()
-                    .map(this::toCourseResponse)
+            List<CourseEnrolledResponse> courseResponse = enrolledCourses.getContent().stream()
+                    .map(course -> toCourseEnrolledResponse(course, userId))
                     .collect(Collectors.toList());
 
             return ResponseEntity.ok(ApiResponse.success(
@@ -126,10 +162,10 @@ public class CourseController {
         }
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<?>> getCourseById(
+    @GetMapping("/my-courses/{id}")
+    public ResponseEntity<ApiResponse<CourseEnrolledResponse>> getMyCourseById(
             @PathVariable UUID id,
-            @RequestParam(required = false) UUID userId
+            @RequestParam UUID userId
     ) {
         try {
             Optional<Course> courseOpt = courseService.getCourseById(id);
@@ -144,10 +180,7 @@ public class CourseController {
             }
 
             Course course = courseOpt.get();
-
-            // If userId is provided, check enrollment status
-            if (userId != null && enrollmentService.isEnrolled(userId, id)) {
-                // User is enrolled, return CourseEnrolledResponse with articles
+            if (enrollmentService.isEnrolled(userId, id)) {
                 CourseEnrolledResponse response = this.toCourseEnrolledResponse(course, userId);
                 return ResponseEntity.ok(ApiResponse.success(
                         HttpStatus.OK.value(),
@@ -155,20 +188,19 @@ public class CourseController {
                         response
                 ));
             } else {
-                // User is not enrolled or userId not provided
-                CourseResponse response = this.toCourseResponse(course);
-                return ResponseEntity.ok(ApiResponse.success(
-                        HttpStatus.OK.value(),
-                        "Course retrieved successfully.",
-                        response
-                ));
+                return ResponseEntity
+                        .status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error(
+                                HttpStatus.FORBIDDEN.value(),
+                                "You are not enrolled in this course."
+                        ));
             }
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error(
                             HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                            "An error occurred while retrieving the course."
+                            "An error occurred while retrieving the course: " + e.getMessage()
                     ));
         }
     }
@@ -334,7 +366,7 @@ public class CourseController {
     }
 
     /* DTO Mapper helper */
-    private CourseResponse toCourseResponse(Course course) {
+    private CourseResponse toCourseResponse(Course course, UUID userId) {
         List<CourseResponse.Section> sectionResponses = course.getSections().stream()
             .map(section -> new CourseResponse.Section(
                 section.getId(),
@@ -342,14 +374,16 @@ public class CourseController {
             ))
             .collect(Collectors.toList());
 
+        String tutorName = "Unknown"; // TODO: Fetch tutor name from user service or similar
+        boolean isEnrolled = userId != null && enrollmentService.isEnrolled(userId, course.getId());
+
         return new CourseResponse(
                 course.getId(),
                 course.getName(),
                 course.getDescription(),
-                null,
-                // TODO: tutor name //
-                // course.getTutorId(),
+                tutorName,
                 course.getPrice(),
+                isEnrolled,
                 sectionResponses
         );
     };
@@ -379,11 +413,14 @@ public class CourseController {
                 .map(Enrollment::getEnrollmentDate)
                 .orElse(null);
 
+        String tutorName = "Unknown"; // TODO: Fetch tutor name from user service or similar
+
         return new CourseEnrolledResponse(
                 course.getId(),
                 course.getName(),
                 course.getDescription(),
-                null, // TODO: tutor name
+                tutorName,
+                course.getPrice(),
                 enrollmentDate,
                 sectionResponses
         );
