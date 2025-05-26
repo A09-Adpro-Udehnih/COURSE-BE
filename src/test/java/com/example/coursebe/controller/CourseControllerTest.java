@@ -520,21 +520,33 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("POST /courses/{id}/enroll - should enroll student in course successfully")
+    @DisplayName("POST /courses/{id}/enroll?userId={userId} - should enroll student in course successfully")
     void enrollCourse_success() throws ExecutionException, InterruptedException {
         // Given
         UUID courseId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Course mockCourse = new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99"));
-        Enrollment mockEnrollment = new Enrollment(tutorId, mockCourse);
+
+        // Set course ID using reflection
+        try {
+            java.lang.reflect.Field field = Course.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(mockCourse, courseId);
+        } catch (Exception e) {
+            fail("Failed to set course ID");
+        }
+
+        // Now create enrollment with the Course object
+        Enrollment mockEnrollment = new Enrollment(userId, mockCourse);
 
         when(courseService.getCourseById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(enrollmentService.enroll(tutorId, courseId)).thenReturn(
+        when(enrollmentService.enroll(userId, courseId)).thenReturn(
                 CompletableFuture.completedFuture(mockEnrollment)
         );
 
         // When
         CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
-                courseController.enrollCourse(courseId, principal);
+                courseController.enrollCourse(courseId, userId);
         ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
 
         // Then
@@ -546,21 +558,23 @@ class CourseControllerTest {
         assertTrue(responseBody.isSuccess());
         assertEquals("Successfully enrolled in the course.", responseBody.getMessage());
         assertNotNull(responseBody.getData());
+        assertEquals(courseId, responseBody.getData().getCourseId());
 
         verify(courseService).getCourseById(courseId);
-        verify(enrollmentService).enroll(tutorId, courseId);
+        verify(enrollmentService).enroll(userId, courseId);
     }
 
     @Test
-    @DisplayName("POST /courses/{id}/enroll - should return 404 when course not found")
+    @DisplayName("POST /courses/{id}/enroll?userId={userId} - should return 404 when course not found")
     void enrollCourse_courseNotFound() throws ExecutionException, InterruptedException {
         // Given
         UUID courseId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
 
         // When
         CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
-                courseController.enrollCourse(courseId, principal);
+                courseController.enrollCourse(courseId, userId);
         ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
 
         // Then
@@ -578,20 +592,21 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("POST /courses/{id}/enroll - should return bad request when enrollment fails")
+    @DisplayName("POST /courses/{id}/enroll?userId={userId} - should return bad request when enrollment fails")
     void enrollCourse_enrollmentFails() throws ExecutionException, InterruptedException {
         // Given
         UUID courseId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Course mockCourse = new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99"));
 
         when(courseService.getCourseById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(enrollmentService.enroll(tutorId, courseId)).thenReturn(
+        when(enrollmentService.enroll(userId, courseId)).thenReturn(
                 CompletableFuture.completedFuture(null)
         );
 
         // When
         CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
-                courseController.enrollCourse(courseId, principal);
+                courseController.enrollCourse(courseId, userId);
         ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
 
         // Then
@@ -605,25 +620,26 @@ class CourseControllerTest {
         assertNull(responseBody.getData());
 
         verify(courseService).getCourseById(courseId);
-        verify(enrollmentService).enroll(tutorId, courseId);
+        verify(enrollmentService).enroll(userId, courseId);
     }
 
     @Test
-    @DisplayName("POST /courses/{id}/enroll - should handle exceptions properly")
+    @DisplayName("POST /courses/{id}/enroll?userId={userId} - should handle exceptions properly")
     void enrollCourse_handlesException() throws ExecutionException, InterruptedException {
         // Given
         UUID courseId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         Course mockCourse = new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99"));
         RuntimeException testException = new RuntimeException("Test exception");
 
         when(courseService.getCourseById(courseId)).thenReturn(Optional.of(mockCourse));
-        when(enrollmentService.enroll(tutorId, courseId)).thenReturn(
+        when(enrollmentService.enroll(userId, courseId)).thenReturn(
                 CompletableFuture.failedFuture(testException)
         );
 
         // When
         CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
-                courseController.enrollCourse(courseId, principal);
+                courseController.enrollCourse(courseId, userId);
         ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
 
         // Then
@@ -637,7 +653,95 @@ class CourseControllerTest {
         assertNull(responseBody.getData());
 
         verify(courseService).getCourseById(courseId);
-        verify(enrollmentService).enroll(tutorId, courseId);
+        verify(enrollmentService).enroll(userId, courseId);
+    }
+
+    @Test
+    @DisplayName("DELETE /courses/{id}/unenroll?userId={userId} - should unenroll student from course successfully")
+    void unenrollCourse_success() throws ExecutionException, InterruptedException {
+        // Given
+        UUID courseId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        when(enrollmentService.unenroll(userId, courseId)).thenReturn(
+                CompletableFuture.completedFuture(true)
+        );
+
+        // When
+        CompletableFuture<ResponseEntity<ApiResponse<Void>>> futureResponse =
+                courseController.unenrollCourse(courseId, userId);
+        ResponseEntity<ApiResponse<Void>> response = futureResponse.get();  // Wait for the async result
+
+        // Then
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        ApiResponse<Void> responseBody = response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(200, responseBody.getCode());
+        assertTrue(responseBody.isSuccess());
+        assertEquals("Successfully unenrolled from the course.", responseBody.getMessage());
+        assertNull(responseBody.getData());
+
+        verify(enrollmentService).unenroll(userId, courseId);
+    }
+
+    @Test
+    @DisplayName("DELETE /courses/{id}/unenroll?userId={userId} - should return bad request when unenrollment fails")
+    void unenrollCourse_unenrollmentFails() throws ExecutionException, InterruptedException {
+        // Given
+        UUID courseId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        when(enrollmentService.unenroll(userId, courseId)).thenReturn(
+                CompletableFuture.completedFuture(false)
+        );
+
+        // When
+        CompletableFuture<ResponseEntity<ApiResponse<Void>>> futureResponse =
+                courseController.unenrollCourse(courseId, userId);
+        ResponseEntity<ApiResponse<Void>> response = futureResponse.get();  // Wait for the async result
+
+        // Then
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+
+        ApiResponse<Void> responseBody = response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(400, responseBody.getCode());
+        assertFalse(responseBody.isSuccess());
+        assertEquals("Failed to unenroll from the course.", responseBody.getMessage());
+        assertNull(responseBody.getData());
+
+        verify(enrollmentService).unenroll(userId, courseId);
+    }
+
+    @Test
+    @DisplayName("DELETE /courses/{id}/unenroll?userId={userId} - should handle exceptions properly")
+    void unenrollCourse_handlesException() throws ExecutionException, InterruptedException {
+        // Given
+        UUID courseId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        RuntimeException testException = new RuntimeException("Test exception");
+
+        when(enrollmentService.unenroll(userId, courseId)).thenReturn(
+                CompletableFuture.failedFuture(testException)
+        );
+
+        // When
+        CompletableFuture<ResponseEntity<ApiResponse<Void>>> futureResponse =
+                courseController.unenrollCourse(courseId, userId);
+        ResponseEntity<ApiResponse<Void>> response = futureResponse.get();  // Wait for the async result
+
+        // Then
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+
+        ApiResponse<Void> responseBody = response.getBody();
+        assertNotNull(responseBody);
+        assertEquals(500, responseBody.getCode());
+        assertFalse(responseBody.isSuccess());
+        assertEquals("Error unenrolling from course: Test exception", responseBody.getMessage());
+        assertNull(responseBody.getData());
+
+        verify(enrollmentService).unenroll(userId, courseId);
     }
 
     @Test
