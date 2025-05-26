@@ -1,8 +1,12 @@
 package com.example.coursebe.service;
 
+import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import com.example.coursebe.model.Course;
+import com.example.coursebe.pattern.strategy.CourseSearchContext;
+import com.example.coursebe.pattern.strategy.CourseSearchStrategy;
 import com.example.coursebe.repository.CourseRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,17 +21,17 @@ import java.util.UUID;
  */
 @Service
 public class CourseServiceImpl implements CourseService {
-
     private final CourseRepository courseRepository;
+    private final CourseSearchContext courseSearchContext;
 
-    @Autowired
-    public CourseServiceImpl(CourseRepository courseRepository) {
+    public CourseServiceImpl(CourseRepository courseRepository, CourseSearchContext courseSearchContext) {
         this.courseRepository = courseRepository;
+        this.courseSearchContext = courseSearchContext;
     }
 
     @Override
-    public List<Course> getAllCourses() {
-        return courseRepository.findAll();
+    public Page<Course> getAllCourses(Pageable pageable) {
+        return courseRepository.findAll(pageable);
     }
 
     @Override
@@ -41,8 +45,12 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    public List<Course> searchCoursesByName(String keyword) {
-        return courseRepository.findByNameContainingIgnoreCase(keyword);
+    public Page<Course> searchCourses(String type, String keyword, Pageable pageable) {
+        if (!courseSearchContext.isValidStrategy(type)) {
+            throw new UnsupportedSearchTypeException(type);
+        }
+        CourseSearchStrategy strategy = courseSearchContext.getStrategy(type);
+        return strategy.search(keyword, pageable);
     }
 
     @Override

@@ -333,4 +333,138 @@ public class ArticleServiceImplTest {
         verify(sectionRepository).findById(nonExistentId);
         verify(articleRepository, never()).save(any(Article.class));
     }
+
+    @Test
+    @DisplayName("Should throw exception when creating article with null section ID")
+    void createArticle_nullSectionId() {
+        // When & Then
+        assertThrows(IllegalArgumentException.class, () -> {
+            articleService.createArticle(null, "Title", "Content", 0);
+        });
+    }
+
+    @Test
+    @DisplayName("Should throw exception when creating article with null title")
+    void createArticle_nullTitle() {
+        // When & Then
+        assertThrows(IllegalArgumentException.class, () -> {
+            articleService.createArticle(sectionId, null, "Content", 0);
+        });
+    }
+
+    @Test
+    @DisplayName("Should throw exception when creating article with empty title")
+    void createArticle_emptyTitle() {
+        // When & Then
+        assertThrows(IllegalArgumentException.class, () -> {
+            articleService.createArticle(sectionId, "", "Content", 0);
+        });
+    }
+
+    @Test
+    @DisplayName("Should return null when creating article with non-existent section")
+    void createArticle_nonExistentSection() {
+        // Given
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.empty());
+
+        // When
+        Article result = articleService.createArticle(sectionId, "Title", "Content", 0);
+
+        // Then
+        assertNull(result);
+        verify(sectionRepository).findById(sectionId);
+        verify(articleRepository, never()).save(any(Article.class));
+    }
+
+    @Test
+    @DisplayName("Should throw exception when deleting article with null ID")
+    void deleteArticle_nullId() {
+        // When & Then
+        assertThrows(IllegalArgumentException.class, () -> {
+            articleService.deleteArticle(null);
+        });
+    }
+
+    @Test
+    @DisplayName("Should throw exception when reordering articles with null section ID")
+    void reorderArticles_nullSectionId() {
+        // When & Then
+        assertThrows(IllegalArgumentException.class, () -> {
+            articleService.reorderArticles(null, List.of(articleId));
+        });
+    }
+
+    @Test
+    @DisplayName("Should throw exception when reordering articles with null article IDs")
+    void reorderArticles_nullArticleIds() {
+        // When & Then
+        assertThrows(IllegalArgumentException.class, () -> {
+            articleService.reorderArticles(sectionId, null);
+        });
+    }
+
+    @Test
+    @DisplayName("Should throw exception when reordering articles with empty article IDs")
+    void reorderArticles_emptyArticleIds() {
+        // When & Then
+        assertThrows(IllegalArgumentException.class, () -> {
+            articleService.reorderArticles(sectionId, List.of());
+        });
+    }
+
+    @Test
+    @DisplayName("Should throw exception when updating article with null ID")
+    void updateArticle_nullId() {
+        // When & Then
+        assertThrows(IllegalArgumentException.class, () -> {
+            articleService.updateArticle(null, "Title", "Content", 0);
+        });
+    }
+
+    @Test
+    @DisplayName("Should return empty optional when updating non-existent article")
+    void updateArticle_nonExistent() {
+        // Given
+        when(articleRepository.findById(articleId)).thenReturn(Optional.empty());
+
+        // When
+        Optional<Article> result = articleService.updateArticle(articleId, "Title", "Content", 0);
+
+        // Then
+        assertTrue(result.isEmpty());
+        verify(articleRepository).findById(articleId);
+        verify(articleRepository, never()).save(any(Article.class));
+    }
+
+    @Test
+    @DisplayName("Should handle reordering articles with non-existent section")
+    void reorderArticles_nonExistentSection() {
+        // Given
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.empty());
+
+        // When
+        List<Article> result = articleService.reorderArticles(sectionId, List.of(articleId));
+
+        // Then
+        assertTrue(result.isEmpty());
+        verify(sectionRepository).findById(sectionId);
+        verify(articleRepository, never()).findBySection(any());
+        verify(articleRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("Should throw exception when reordering articles with non-existent articles")
+    void reorderArticles_nonExistentArticles() {
+        // Given
+        when(sectionRepository.findById(sectionId)).thenReturn(Optional.of(testSection));
+        when(articleRepository.findBySection(testSection)).thenReturn(List.of());
+
+        // When & Then
+        assertThrows(IllegalArgumentException.class, () -> {
+            articleService.reorderArticles(sectionId, List.of(articleId));
+        });
+        verify(sectionRepository).findById(sectionId);
+        verify(articleRepository).findBySection(testSection);
+        verify(articleRepository, never()).saveAll(any());
+    }
 }

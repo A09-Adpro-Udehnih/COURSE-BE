@@ -1,11 +1,11 @@
 package com.example.coursebe.service;
 
-import com.example.coursebe.model.Course;
 import com.example.coursebe.model.Enrollment;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Service interface for managing Enrollment entities
@@ -41,20 +41,20 @@ public interface EnrollmentService {
      * @return true if enrolled, false otherwise
      */
     boolean isEnrolled(UUID studentId, UUID courseId);
-    
+
     /**
-     * Enroll a student in a course
+     * Asynchronously enroll a student in a course
      * @param studentId Student ID
      * @param courseId Course ID
-     * @return Created enrollment or null if course not found or student is already enrolled
+     * @return CompletableFuture containing the created enrollment or null if course not found or student is already enrolled
      */
-    Enrollment enroll(UUID studentId, UUID courseId);
-    
+    CompletableFuture<Enrollment> enroll(UUID studentId, UUID courseId);
+
     /**
-     * Unenroll a student from a course
+     * Asynchronously unenroll a student from a course
      * @param studentId Student ID
      * @param courseId Course ID
-     * @return true if unenrolled successfully, false otherwise
+     * @return CompletableFuture<Boolean> that completes with true if unenrolled successfully, false otherwise
      */
-    boolean unenroll(UUID studentId, UUID courseId);
+    CompletableFuture<Boolean> unenroll(UUID studentId, UUID courseId);
 }
