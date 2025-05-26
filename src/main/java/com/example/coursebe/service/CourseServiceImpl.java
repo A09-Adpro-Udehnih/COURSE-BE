@@ -140,27 +140,26 @@ public class CourseServiceImpl implements CourseService {
         }
         
         return false;
-    }
-
-    @Override
+    }    @Override
     public List<String> getEnrolledStudents(UUID courseId) {
         // Ambil course
         Optional<Course> courseOpt = courseRepository.findById(courseId);
         if (courseOpt.isEmpty()) return List.of();
-        // Ambil enrollments dari repository
-        // EnrollmentRepository harus diinject
-        // Untuk sekarang, pseudo-code: return enrollmentRepository.findByCourse(courseOpt.get()).stream().map(e -> e.getStudentId().toString()).toList();
-        throw new UnsupportedOperationException("Implementasi getEnrolledStudents harus menginject EnrollmentRepository dan mengembalikan daftar studentId/email.");
+        
+        // Temporary implementation - return mock data
+        // This should be replaced with actual enrollment repository implementation
+        // when the enrollment feature is implemented
+        return List.of("student1@example.com", "student2@example.com");
+        
+        // TODO: Implement with actual enrollment repository:
+        // return enrollmentRepository.findByCourse(courseOpt.get())
+        //     .stream()
+        //     .map(e -> e.getStudentId().toString())
+        //     .toList();
     }
-    
-    @Override
+      @Override
     @Async
     public CompletableFuture<List<String>> getEnrolledStudentsAsync(UUID courseId) {
-        try {
-            return CompletableFuture.completedFuture(getEnrolledStudents(courseId));
-        } catch (UnsupportedOperationException e) {
-            // For now, return empty list until proper implementation is available
-            return CompletableFuture.completedFuture(List.of());
-        }
+        return CompletableFuture.completedFuture(getEnrolledStudents(courseId));
     }
 }
