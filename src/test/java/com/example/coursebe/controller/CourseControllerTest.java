@@ -10,7 +10,6 @@ import com.example.coursebe.model.TutorApplication;
 import com.example.coursebe.service.CourseService;
 import com.example.coursebe.service.EnrollmentService;
 import com.example.coursebe.service.TutorApplicationService;
-import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -484,7 +483,7 @@ class CourseControllerTest {
         when(courseService.createCourse(req.name, req.description, tutorId, req.price)).thenReturn(course);
 
         ResponseEntity<?> response = courseController.createCourse(req, principal);
-        assertEquals(201, response.getStatusCodeValue());
+        assertEquals(201, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("Course created successfully"));
         verify(courseService).createCourse(req.name, req.description, tutorId, req.price);
     }
@@ -501,7 +500,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
 
         ResponseEntity<?> response = courseController.createCourse(req, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).createCourse(any(), any(), any(), any());
     }
@@ -516,7 +515,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = courseController.createCourse(req, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).createCourse(any(), any(), any(), any());
     }
@@ -534,7 +533,7 @@ class CourseControllerTest {
         when(courseService.getCoursesByTutorId(tutorId)).thenReturn(courses);
 
         ResponseEntity<?> response = courseController.getMyCourses(principal);
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody() instanceof java.util.Map);
         var respMap = (java.util.Map<?,?>) response.getBody();
         assertTrue((Boolean) respMap.get("success"));
@@ -561,7 +560,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
 
         ResponseEntity<?> response = courseController.getMyCourses(principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).getCoursesByTutorId(any());
     }
@@ -572,7 +571,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = courseController.getMyCourses(principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).getCoursesByTutorId(any());
     }
@@ -589,7 +588,7 @@ class CourseControllerTest {
         when(courseService.deleteCourse(courseId)).thenReturn(true);
 
         ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("deleted successfully"));
         verify(courseService).deleteCourse(courseId);
     }
@@ -603,7 +602,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
 
         ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).deleteCourse(any());
     }
@@ -619,7 +618,7 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.of(course));
 
         ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("Only the owner can delete"));
         verify(courseService, never()).deleteCourse(any());
     }
@@ -634,7 +633,7 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("Only the owner can delete"));
         verify(courseService, never()).deleteCourse(any());
     }
@@ -652,7 +651,7 @@ class CourseControllerTest {
         when(courseService.getEnrolledStudents(courseId)).thenReturn(students);
 
         ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("students"));
         assertTrue(response.getBody().toString().contains("student1@example.com"));
         verify(courseService).getEnrolledStudents(courseId);
@@ -667,7 +666,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
 
         ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).getEnrolledStudents(any());
     }
@@ -683,7 +682,7 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.of(course));
 
         ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("Only the owner can view"));
         verify(courseService, never()).getEnrolledStudents(any());
     }
@@ -698,7 +697,7 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("Only the owner can view"));
         verify(courseService, never()).getEnrolledStudents(any());
     }

@@ -6,7 +6,6 @@ import com.example.coursebe.dto.EnrollmentResponse;
 import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import com.example.coursebe.model.Enrollment;
 import com.example.coursebe.service.EnrollmentService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +30,6 @@ public class CourseController {
     private final EnrollmentService enrollmentService;
     private final TutorApplicationService tutorApplicationService;
 
-    @Autowired
     public CourseController(CourseService courseService, EnrollmentService enrollmentService, TutorApplicationService tutorApplicationService) {
         this.courseService = courseService;
         this.enrollmentService = enrollmentService;

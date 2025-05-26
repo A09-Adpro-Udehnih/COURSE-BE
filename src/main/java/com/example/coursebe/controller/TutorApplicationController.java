@@ -2,7 +2,6 @@ package com.example.coursebe.controller;
 
 import com.example.coursebe.model.TutorApplication;
 import com.example.coursebe.service.TutorApplicationService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +17,6 @@ import java.util.UUID;
 public class TutorApplicationController {
     private final TutorApplicationService tutorApplicationService;
 
-    @Autowired
     public TutorApplicationController(TutorApplicationService tutorApplicationService) {
         this.tutorApplicationService = tutorApplicationService;
     }

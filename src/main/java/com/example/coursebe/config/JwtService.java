@@ -12,7 +12,7 @@ import java.util.Base64;
 public class JwtService {
     // Use the same signing key as in AUTH-BE service and Caddy
     private final Key key = Keys.hmacShaKeyFor(
-        Base64.getDecoder().decode(System.getenv("JWT_TOKEN"))
+        Base64.getDecoder().decode(System.getenv("JWT_TOKEN") != null ? System.getenv("JWT_TOKEN") : "secretsampai256bitsinicumanbuattestingbiardigithubsoalnyagabacaenv")
     );
     
     public String extractUserIdFromToken(String token) {
