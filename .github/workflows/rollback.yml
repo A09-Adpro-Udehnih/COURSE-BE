@@ -32,19 +32,26 @@ jobs:
               exit 1
             fi
 
-            echo "Rolling back to: $ROLLBACK_IMAGE"
+            echo "Logging into Docker Hub..."
+            docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} -p ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-            echo "Stopping and removing current container (if running)..."
-            docker rm -f web_server || true
+            echo "Pulling rollback image: $ROLLBACK_IMAGE"
+            docker pull $ROLLBACK_IMAGE
 
-            echo "Starting container with rollback image..."
-            docker run -d \
-              --name web_server \
-              -p 8081:8081 \
-              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-              -e DATABASE_USERNAME="${{ secrets.DATABASE_USERNAME }}" \
-              -e DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
-              -e JWT_TOKEN="${{ secrets.JWT_TOKEN }}" \
-              $ROLLBACK_IMAGE
+            echo "Stopping and removing current containers..."
+            docker compose -f docker-compose.yml down
+
+            echo "Writing rollback environment..."
+            cat <<EOF > .env
+            IMAGE_NAME=${ROLLBACK_IMAGE%:*}
+            TAG=${ROLLBACK_IMAGE##*:}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}
+            DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
+            JWT_TOKEN=${{ secrets.JWT_TOKEN }}
+            EOF
+
+            echo "Starting rollback container with Docker Compose..."
+            docker compose -f docker-compose.yml up -d --remove-orphans
 
             echo "Rollback successful."
