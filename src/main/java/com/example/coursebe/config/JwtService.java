@@ -1,14 +1,13 @@
 package com.example.coursebe.config;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Base64;
-import java.util.Date;
-import java.util.UUID;
-
 @Service
 public class JwtService {
     // Use the same signing key as in AUTH-BE service and Caddy
