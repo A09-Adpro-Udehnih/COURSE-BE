@@ -102,11 +102,24 @@ public interface TutorApplicationService {
      * @return true if deleted, false if not found
      */
     boolean deleteApplication(UUID id);
-    
-    /**
+      /**
      * Delete the most recent application by studentId
      * @param studentId Student ID
      * @return true if deleted, false if not found
      */
     boolean deleteApplicationByStudentId(UUID studentId);
+    
+    /**
+     * Delete the most recent application by studentId asynchronously
+     * @param studentId Student ID
+     * @return CompletableFuture of true if deleted, false if not found
+     */
+    CompletableFuture<Boolean> deleteApplicationByStudentIdAsync(UUID studentId);
+    
+    /**
+     * Delete all applications by studentId (for cleanup operations)
+     * @param studentId Student ID
+     * @return number of deleted applications
+     */
+    int deleteAllApplicationsByStudentId(UUID studentId);
 }

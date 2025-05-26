@@ -4,7 +4,6 @@ import com.example.coursebe.model.Article;
 import com.example.coursebe.model.Section;
 import com.example.coursebe.repository.ArticleRepository;
 import com.example.coursebe.repository.SectionRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +22,6 @@ public class ArticleServiceImpl implements ArticleService {
     private final ArticleRepository articleRepository;
     private final SectionRepository sectionRepository;
 
-    @Autowired
     public ArticleServiceImpl(ArticleRepository articleRepository, SectionRepository sectionRepository) {
         this.articleRepository = articleRepository;
         this.sectionRepository = sectionRepository;

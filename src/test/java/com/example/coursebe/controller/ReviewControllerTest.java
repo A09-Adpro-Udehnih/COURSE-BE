@@ -80,6 +80,23 @@ class ReviewControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/reviews/course/{courseId} with out of bounds page")
+    void getReviewsByCourseIdOutOfBoundsPage() throws Exception {
+        when(reviewService.getReviewsByCourseId(courseId)).thenReturn(List.of(review));
+
+        ResponseEntity<GlobalResponse<List<ReviewResponse>>> response = reviewController.getReviewsByCourseId(courseId, 1);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        GlobalResponse<List<ReviewResponse>> body = response.getBody();
+        assertNotNull(body);
+        assertTrue(body.isSuccess());
+        assertEquals("No reviews found.", body.getMessage());
+        assertNotNull(body.getData());
+        assertTrue(body.getData().isEmpty());
+    }
+
+    @Test
     @DisplayName("GET /api/reviews/user/{userId}")
     void getReviewsByUserId() throws Exception {
         when(reviewService.getReviewsByUserId(userId)).thenReturn(List.of(review));

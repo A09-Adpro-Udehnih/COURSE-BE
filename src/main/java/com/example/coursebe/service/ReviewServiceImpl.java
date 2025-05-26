@@ -35,9 +35,6 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional
     public Review createReview(UUID courseId, UUID userId, int rating, String comment) {
-        if (courseId == null) throw new IllegalArgumentException("Course ID cannot be null");
-        if (userId == null) throw new IllegalArgumentException("User ID cannot be null");
-        if (rating < 1 || rating > 5) throw new IllegalArgumentException("Rating must be between 1 and 5");
         Review review = Review.builder()
                 .courseId(courseId)
                 .userId(userId)
@@ -50,7 +47,6 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional
     public Optional<Review> updateReview(UUID id, Integer rating, String comment) {
-        if (id == null) throw new IllegalArgumentException("Review ID cannot be null");
         Optional<Review> optionalReview = reviewRepository.findById(id);
         if (optionalReview.isEmpty()) {
             return Optional.empty();
@@ -65,7 +61,6 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional
     public boolean deleteReview(UUID id) {
-        if (id == null) throw new IllegalArgumentException("Review ID cannot be null");
         if (reviewRepository.existsById(id)) {
             reviewRepository.deleteById(id);
             return true;

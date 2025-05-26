@@ -1,29 +1,25 @@
 package com.example.coursebe.service;
 
 import com.example.coursebe.model.Course;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Service interface for managing Course entities
  */
 public interface CourseService {
-    
+
     /**
-     * Get all courses
-     * @return List of all courses
+     * Get all courses with pagination
+     * @param pageable Pagination information (page number, size, sort)
+     * @return Page of courses with pagination information
      */
-    List<Course> getAllCourses();
-    
-    /**
-     * Get all courses asynchronously
-     * @return CompletableFuture of list of all courses
-     */
-    CompletableFuture<List<Course>> getAllCoursesAsync();
+    Page<Course> getAllCourses(Pageable pageable);
     
     /**
      * Get course by ID
@@ -33,32 +29,20 @@ public interface CourseService {
     Optional<Course> getCourseById(UUID id);
     
     /**
-     * Get course by ID asynchronously
-     * @param id Course ID
-     * @return CompletableFuture of optional containing course if found
-     */
-    CompletableFuture<Optional<Course>> getCourseByIdAsync(UUID id);
-    
-    /**
      * Get courses for a specific tutor
      * @param tutorId Tutor ID
      * @return List of courses created by the tutor
      */
     List<Course> getCoursesByTutorId(UUID tutorId);
-    
+
     /**
-     * Get courses for a specific tutor asynchronously
-     * @param tutorId Tutor ID
-     * @return CompletableFuture of list of courses created by the tutor
+     * Search courses by strategy with pagination (case insensitive)
+     * @param type Type of search (keyword, name, description)
+     * @param keyword Keyword to search for
+     * @param pageable Pagination information (page number, size, sort)
+     * @return Page of matching courses
      */
-    CompletableFuture<List<Course>> getCoursesByTutorIdAsync(UUID tutorId);
-    
-    /**
-     * Search courses by name (case insensitive)
-     * @param keyword Keyword to search for in course names
-     * @return List of matching courses
-     */
-    List<Course> searchCoursesByName(String keyword);
+    Page<Course> searchCourses(String type, String keyword, Pageable pageable);
     
     /**
      * Create a new course
@@ -69,16 +53,6 @@ public interface CourseService {
      * @return Created course
      */
     Course createCourse(String name, String description, UUID tutorId, BigDecimal price);
-    
-    /**
-     * Create a new course asynchronously
-     * @param name Course name
-     * @param description Course description
-     * @param tutorId ID of the tutor creating the course
-     * @param price Course price
-     * @return CompletableFuture of created course
-     */
-    CompletableFuture<Course> createCourseAsync(String name, String description, UUID tutorId, BigDecimal price);
     
     /**
      * Update an existing course
@@ -103,11 +77,5 @@ public interface CourseService {
      * @return List of students (misal: email, id, atau objek Student)
      */
     List<String> getEnrolledStudents(UUID courseId);
-    
-    /**
-     * Get list of students enrolled in a course asynchronously
-     * @param courseId Course ID
-     * @return CompletableFuture of list of students
-     */
-    CompletableFuture<List<String>> getEnrolledStudentsAsync(UUID courseId);
+
 }
