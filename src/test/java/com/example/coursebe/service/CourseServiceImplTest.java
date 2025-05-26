@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -191,7 +192,7 @@ public class CourseServiceImplTest {
         when(courseRepository.save(any(Course.class))).thenAnswer(i -> i.getArguments()[0]);
         
         // When
-        Optional<Course> result = courseService.updateCourse(courseId, updatedName, updatedDescription, updatedPrice);
+        Optional<Course> result = courseService.updateCourse(courseId, updatedName, updatedDescription, updatedPrice, Collections.emptyList());
         
         // Then
         assertTrue(result.isPresent());
@@ -210,7 +211,7 @@ public class CourseServiceImplTest {
         when(courseRepository.findById(nonExistentId)).thenReturn(Optional.empty());
         
         // When
-        Optional<Course> result = courseService.updateCourse(nonExistentId, "Name", "Description", new BigDecimal("99.99"));
+        Optional<Course> result = courseService.updateCourse(nonExistentId, "Name", "Description", new BigDecimal("99.99"), Collections.emptyList());
         
         // Then
         assertFalse(result.isPresent());

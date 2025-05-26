@@ -294,31 +294,28 @@ public class TutorApplicationServiceImplTest {
     @DisplayName("Should delete most recent application by student ID")
     void deleteApplicationByStudentId_success() {
         // Given
-        when(tutorApplicationRepository.findTopByStudentIdOrderByCreatedAtDesc(studentId))
-            .thenReturn(Optional.of(testApplication));
+        when(tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId)).thenReturn(1); // Simulate 1 row deleted
 
         // When
         boolean result = tutorApplicationService.deleteApplicationByStudentId(studentId);
 
         // Then
         assertTrue(result);
-        verify(tutorApplicationRepository).findTopByStudentIdOrderByCreatedAtDesc(studentId);
-        verify(tutorApplicationRepository).deleteById(testApplication.getId());
+        verify(tutorApplicationRepository).deleteTopByStudentIdOrderByCreatedAtDesc(studentId); // Verify the correct method is called
     }
 
     @Test
     @DisplayName("Should return false when deleting application by student ID if not found")
     void deleteApplicationByStudentId_notFound() {
         // Given
-        when(tutorApplicationRepository.findTopByStudentIdOrderByCreatedAtDesc(studentId))
-            .thenReturn(Optional.empty());
+        when(tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId)).thenReturn(0); // Simulate 0 rows deleted
 
         // When
         boolean result = tutorApplicationService.deleteApplicationByStudentId(studentId);
 
         // Then
         assertFalse(result);
-        verify(tutorApplicationRepository).findTopByStudentIdOrderByCreatedAtDesc(studentId);
-        verify(tutorApplicationRepository, never()).deleteById(any(UUID.class));
+        verify(tutorApplicationRepository).deleteTopByStudentIdOrderByCreatedAtDesc(studentId); // Verify the correct method is called
+        verify(tutorApplicationRepository, never()).deleteById(any(UUID.class)); // This should still hold true
     }
 }

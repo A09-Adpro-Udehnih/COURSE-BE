@@ -4,9 +4,11 @@ import com.example.coursebe.controller.CourseController; // Added for SectionDto
 import com.example.coursebe.model.Article; // Added
 import com.example.coursebe.model.Course;
 import com.example.coursebe.model.Section; // Added
+import com.example.coursebe.model.Enrollment; // <<< Import Enrollment
 import com.example.coursebe.repository.ArticleRepository; // Added
 import com.example.coursebe.repository.CourseRepository;
 import com.example.coursebe.repository.SectionRepository; // Added
+import com.example.coursebe.repository.EnrollmentRepository; // <<< Import EnrollmentRepository
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -32,14 +34,17 @@ public class CourseServiceImpl implements CourseService {
     private final CourseRepository courseRepository;
     private final SectionRepository sectionRepository; // Added
     private final ArticleRepository articleRepository; // Added
+    private final EnrollmentRepository enrollmentRepository; // <<< Add EnrollmentRepository field
 
     @Autowired
     public CourseServiceImpl(CourseRepository courseRepository,
                            SectionRepository sectionRepository, // Added
-                           ArticleRepository articleRepository) { // Added
+                           ArticleRepository articleRepository, // Added
+                           EnrollmentRepository enrollmentRepository) { // <<< Add EnrollmentRepository to constructor
         this.courseRepository = courseRepository;
         this.sectionRepository = sectionRepository; // Added
         this.articleRepository = articleRepository; // Added
+        this.enrollmentRepository = enrollmentRepository; // <<< Initialize EnrollmentRepository
     }
 
     @Override
@@ -233,20 +238,17 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public List<String> getEnrolledStudents(UUID courseId) {
-        // Ambil course
         Optional<Course> courseOpt = courseRepository.findById(courseId);
-        if (courseOpt.isEmpty()) return List.of();
-        
-        // Temporary implementation - return mock data
-        // This should be replaced with actual enrollment repository implementation
-        // when the enrollment feature is implemented
-        return List.of("student1@example.com", "student2@example.com");
-        
-        // TODO: Implement with actual enrollment repository:
-        // return enrollmentRepository.findByCourse(courseOpt.get())
-        //     .stream()
-        //     .map(e -> e.getStudentId().toString())
-        //     .toList();
+        if (courseOpt.isEmpty()) {
+            return List.of(); // Atau throw exception jika course tidak ditemukan
+        }
+
+        Course course = courseOpt.get();
+        List<Enrollment> enrollments = enrollmentRepository.findByCourse(course);
+
+        return enrollments.stream()
+                .map(enrollment -> enrollment.getStudentId().toString()) // Asumsi studentId adalah UUID
+                .collect(Collectors.toList());
     }
       @Override
     @Async
