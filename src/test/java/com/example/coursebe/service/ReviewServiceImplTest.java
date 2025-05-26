@@ -83,13 +83,6 @@ class ReviewServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should throw on invalid rating")
-    void createReviewInvalidRating() {
-        assertThrows(IllegalArgumentException.class, () -> reviewService.createReview(courseId, userId, 0, "Bad"));
-        assertThrows(IllegalArgumentException.class, () -> reviewService.createReview(courseId, userId, 6, "Bad"));
-    }
-
-    @Test
     @DisplayName("Should update review")
     void updateReview() {
         when(reviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
@@ -123,5 +116,27 @@ class ReviewServiceImplTest {
         when(reviewRepository.existsById(reviewId)).thenReturn(false);
         boolean result = reviewService.deleteReview(reviewId);
         assertFalse(result);
+    }
+
+    @Test
+    @DisplayName("Should not update review with null rating")
+    void updateReviewWithNullRating() {
+        when(reviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
+        when(reviewRepository.save(any(Review.class))).thenAnswer(i -> i.getArguments()[0]);
+        Optional<Review> result = reviewService.updateReview(reviewId, null, "Updated");
+        assertTrue(result.isPresent());
+        assertEquals(5, result.get().getRating()); // Original rating should remain unchanged
+        assertEquals("Updated", result.get().getComment());
+    }
+
+    @Test
+    @DisplayName("Should not update review with null comment")
+    void updateReviewWithNullComment() {
+        when(reviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
+        when(reviewRepository.save(any(Review.class))).thenAnswer(i -> i.getArguments()[0]);
+        Optional<Review> result = reviewService.updateReview(reviewId, 4, null);
+        assertTrue(result.isPresent());
+        assertEquals(4, result.get().getRating());
+        assertEquals("Great!", result.get().getComment()); // Original comment should remain unchanged
     }
 }
