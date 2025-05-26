@@ -22,7 +22,6 @@ import com.example.coursebe.dto.CreateCourseRequest;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -206,8 +205,10 @@ public class CourseController {
     }
 
     @PostMapping("{id}/enroll")
-    public CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> enrollCourse(@PathVariable UUID id, Principal principal) {
-        UUID userId = UUID.fromString(principal.getName());
+    public CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> enrollCourse(
+            @PathVariable UUID id,
+            @RequestParam UUID userId
+    ) {
         Optional<Course> courseOpt = courseService.getCourseById(id);
 
         if (courseOpt.isEmpty()) {
@@ -247,6 +248,42 @@ public class CourseController {
                 return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.<EnrollmentResponse>error(
+                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        errorMessage
+                    ));
+            });
+    }
+
+    @DeleteMapping("{id}/unenroll")
+    public CompletableFuture<ResponseEntity<ApiResponse<Void>>> unenrollCourse(
+            @PathVariable UUID id,
+            @RequestParam UUID userId
+    ) {
+        return enrollmentService.unenroll(userId, id)
+            .thenApply(success -> {
+                if (success) {
+                    return ResponseEntity.ok(
+                        ApiResponse.<Void>success(
+                            HttpStatus.OK.value(),
+                            "Successfully unenrolled from the course.",
+                            null
+                        )
+                    );
+                } else {
+                    return ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.<Void>error(
+                            HttpStatus.BAD_REQUEST.value(),
+                            "Failed to unenroll from the course."
+                        ));
+                }
+            })
+            .exceptionally(ex -> {
+                String errorMessage = "Error unenrolling from course: " +
+                        (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
+                return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<Void>error(
                         HttpStatus.INTERNAL_SERVER_ERROR.value(),
                         errorMessage
                     ));
