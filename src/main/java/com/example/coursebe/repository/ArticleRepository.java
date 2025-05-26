@@ -15,25 +15,29 @@ import com.example.coursebe.model.Section;
  */
 @Repository
 public interface ArticleRepository extends JpaRepository<Article, UUID> {
-    
+
     /**
      * Find all articles belonging to a specific section
+     * 
      * @param section the section entity
      * @return list of articles for the section
      */
     List<Article> findBySection(Section section);
-    
+
     /**
      * Find all articles belonging to a specific section, ordered by position
+     * 
      * @param section the section entity
      * @return ordered list of articles for the section
      */
     List<Article> findBySectionOrderByPositionAsc(Section section);
-    
+
     /**
      * Find all articles belonging to a section with the given ID
+     * 
      * @param sectionId the section ID
      * @return list of articles for the section
      */
     List<Article> findBySectionId(UUID sectionId);
+
 }

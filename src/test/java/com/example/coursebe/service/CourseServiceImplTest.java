@@ -1,7 +1,23 @@
 package com.example.coursebe.service;
 
-import com.example.coursebe.model.Course;
-import com.example.coursebe.repository.CourseRepository;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,21 +26,26 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import com.example.coursebe.exception.UnsupportedSearchTypeException;
+import com.example.coursebe.model.Course;
+import com.example.coursebe.pattern.strategy.CourseSearchContext;
+import com.example.coursebe.pattern.strategy.CourseSearchStrategy;
+import com.example.coursebe.repository.CourseRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 public class CourseServiceImplTest {
-
     @Mock
     private CourseRepository courseRepository;
+
+    @Mock
+    private CourseSearchContext courseSearchContext;
+
+    @Mock
+    private CourseSearchStrategy mockSearchStrategy;
 
     @InjectMocks
     private CourseServiceImpl courseService;
@@ -38,7 +59,7 @@ public class CourseServiceImplTest {
     void setUp() {
         courseId = UUID.randomUUID();
         tutorId = UUID.randomUUID();
-        
+
         testCourse = new Course("Test Course", "Test Description", tutorId, new BigDecimal("99.99"));
         // Use reflection to set the ID since it's normally generated
         try {
@@ -48,7 +69,7 @@ public class CourseServiceImplTest {
         } catch (Exception e) {
             fail("Failed to set course ID");
         }
-        
+
         UUID courseId2 = UUID.randomUUID();
         Course course2 = new Course("Java Course", "Learn Java", tutorId, new BigDecimal("149.99"));
         try {
@@ -58,23 +79,46 @@ public class CourseServiceImplTest {
         } catch (Exception e) {
             fail("Failed to set course ID");
         }
-        
+
         testCourses = Arrays.asList(testCourse, course2);
     }
 
     @Test
-    @DisplayName("Should get all courses")
-    void getAllCourses() {
+    @DisplayName("Should get all courses with pagination")
+    void getAllCoursesWithPagination() {
         // Given
-        when(courseRepository.findAll()).thenReturn(testCourses);
-        
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> coursePage = new PageImpl<>(testCourses, pageable, 2);
+        when(courseRepository.findAll(any(Pageable.class))).thenReturn(coursePage);
+
         // When
-        List<Course> result = courseService.getAllCourses();
-        
+        Page<Course> result = courseService.getAllCourses(pageable);
+
         // Then
-        assertEquals(2, result.size());
-        assertEquals(testCourses, result);
-        verify(courseRepository).findAll();
+        assertEquals(2, result.getContent().size());
+        assertEquals(2, result.getTotalElements());
+        assertEquals(1, result.getTotalPages());
+        assertEquals(0, result.getNumber());
+        assertEquals(testCourses, result.getContent());
+        verify(courseRepository).findAll(pageable);
+    }
+
+    @Test
+    @DisplayName("Should get empty page when no courses exist")
+    void getAllCoursesWithPaginationEmpty() {
+        // Given
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+        when(courseRepository.findAll(any(Pageable.class))).thenReturn(emptyPage);
+
+        // When
+        Page<Course> result = courseService.getAllCourses(pageable);
+
+        // Then
+        assertTrue(result.isEmpty());
+        assertEquals(0, result.getTotalElements());
+        assertEquals(0, result.getTotalPages());
+        verify(courseRepository).findAll(pageable);
     }
 
     @Test
@@ -82,10 +126,10 @@ public class CourseServiceImplTest {
     void getCourseById() {
         // Given
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(testCourse));
-        
+
         // When
         Optional<Course> result = courseService.getCourseById(courseId);
-        
+
         // Then
         assertTrue(result.isPresent());
         assertEquals(testCourse, result.get());
@@ -98,10 +142,10 @@ public class CourseServiceImplTest {
         // Given
         UUID nonExistentId = UUID.randomUUID();
         when(courseRepository.findById(nonExistentId)).thenReturn(Optional.empty());
-        
+
         // When
         Optional<Course> result = courseService.getCourseById(nonExistentId);
-        
+
         // Then
         assertFalse(result.isPresent());
         verify(courseRepository).findById(nonExistentId);
@@ -112,10 +156,10 @@ public class CourseServiceImplTest {
     void getCoursesByTutorId() {
         // Given
         when(courseRepository.findByTutorId(tutorId)).thenReturn(testCourses);
-        
+
         // When
         List<Course> result = courseService.getCoursesByTutorId(tutorId);
-        
+
         // Then
         assertEquals(2, result.size());
         assertEquals(testCourses, result);
@@ -123,20 +167,95 @@ public class CourseServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should search courses by name")
-    void searchCoursesByName() {
+    @DisplayName("Should search courses using keyword strategy with pagination")
+    void searchCourses_WithKeywordStrategy() {
         // Given
+        String type = "keyword";
         String keyword = "Java";
-        when(courseRepository.findByNameContainingIgnoreCase(keyword))
-            .thenReturn(Arrays.asList(testCourses.get(1)));
-        
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> keywordPage = new PageImpl<>(List.of(testCourses.get(1)), pageable, 1);
+
+        when(courseSearchContext.isValidStrategy(type)).thenReturn(true);
+        when(courseSearchContext.getStrategy(type)).thenReturn(mockSearchStrategy);
+        when(mockSearchStrategy.search(keyword, pageable)).thenReturn(keywordPage);
+
         // When
-        List<Course> result = courseService.searchCoursesByName(keyword);
-        
+        Page<Course> result = courseService.searchCourses(type, keyword, pageable);
+
         // Then
-        assertEquals(1, result.size());
-        assertEquals("Java Course", result.get(0).getName());
-        verify(courseRepository).findByNameContainingIgnoreCase(keyword);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Java Course", result.getContent().get(0).getName());
+        verify(courseSearchContext).isValidStrategy(type);
+        verify(courseSearchContext).getStrategy(type);
+        verify(mockSearchStrategy).search(keyword, pageable);
+    }
+
+    @Test
+    @DisplayName("Should search courses using name strategy with pagination")
+    void searchCourses_WithNameStrategy() {
+        // Given
+        String type = "name";
+        String keyword = "Test";
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> namePage = new PageImpl<>(List.of(testCourses.get(0)), pageable, 1);
+
+        when(courseSearchContext.isValidStrategy(type)).thenReturn(true);
+        when(courseSearchContext.getStrategy(type)).thenReturn(mockSearchStrategy);
+        when(mockSearchStrategy.search(keyword, pageable)).thenReturn(namePage);
+
+        // When
+        Page<Course> result = courseService.searchCourses(type, keyword, pageable);
+
+        // Then
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Test Course", result.getContent().get(0).getName());
+        verify(courseSearchContext).isValidStrategy(type);
+        verify(courseSearchContext).getStrategy(type);
+        verify(mockSearchStrategy).search(keyword, pageable);
+    }
+
+    @Test
+    @DisplayName("Should throw UnsupportedSearchTypeException when invalid type is provided")
+    void searchCourses_WithInvalidStrategy() {
+        // Given
+        String type = "invalid";
+        String keyword = "Course";
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(courseSearchContext.isValidStrategy(type)).thenReturn(false);
+
+        // When & Then
+        Exception exception = assertThrows(UnsupportedSearchTypeException.class, () -> {
+            courseService.searchCourses(type, keyword, pageable);
+        });
+
+        verify(courseSearchContext).isValidStrategy(type);
+        verify(courseSearchContext, never()).getStrategy(anyString());
+        verify(mockSearchStrategy, never()).search(anyString(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("Should handle empty search results with pagination")
+    void searchCourses_WithNoResults() {
+        // Given
+        String type = "keyword";
+        String keyword = "Nonexistent";
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+
+        when(courseSearchContext.isValidStrategy(type)).thenReturn(true);
+        when(courseSearchContext.getStrategy(type)).thenReturn(mockSearchStrategy);
+        when(mockSearchStrategy.search(keyword, pageable)).thenReturn(emptyPage);
+
+        // When
+        Page<Course> result = courseService.searchCourses(type, keyword, pageable);
+
+        // Then
+        assertTrue(result.isEmpty());
+        assertEquals(0, result.getTotalElements());
+        verify(courseSearchContext).isValidStrategy(type);
+        verify(courseSearchContext).getStrategy(type);
+        verify(mockSearchStrategy).search(keyword, pageable);
     }
 
     @Test
@@ -146,13 +265,13 @@ public class CourseServiceImplTest {
         String name = "New Course";
         String description = "New Description";
         BigDecimal price = new BigDecimal("79.99");
-        
+
         Course newCourse = new Course(name, description, tutorId, price);
         when(courseRepository.save(any(Course.class))).thenReturn(newCourse);
-        
+
         // When
         Course result = courseService.createCourse(name, description, tutorId, price);
-        
+
         // Then
         assertNotNull(result);
         assertEquals(name, result.getName());
@@ -169,12 +288,12 @@ public class CourseServiceImplTest {
         String name = null;
         String description = "Description";
         BigDecimal price = new BigDecimal("79.99");
-        
+
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             courseService.createCourse(name, description, tutorId, price);
         });
-        
+
         assertEquals("Course name cannot be empty", exception.getMessage());
         verify(courseRepository, never()).save(any(Course.class));
     }
@@ -186,13 +305,13 @@ public class CourseServiceImplTest {
         String updatedName = "Updated Course";
         String updatedDescription = "Updated Description";
         BigDecimal updatedPrice = new BigDecimal("129.99");
-        
+
         when(courseRepository.findById(courseId)).thenReturn(Optional.of(testCourse));
         when(courseRepository.save(any(Course.class))).thenAnswer(i -> i.getArguments()[0]);
-        
+
         // When
         Optional<Course> result = courseService.updateCourse(courseId, updatedName, updatedDescription, updatedPrice);
-        
+
         // Then
         assertTrue(result.isPresent());
         assertEquals(updatedName, result.get().getName());
@@ -208,10 +327,11 @@ public class CourseServiceImplTest {
         // Given
         UUID nonExistentId = UUID.randomUUID();
         when(courseRepository.findById(nonExistentId)).thenReturn(Optional.empty());
-        
+
         // When
-        Optional<Course> result = courseService.updateCourse(nonExistentId, "Name", "Description", new BigDecimal("99.99"));
-        
+        Optional<Course> result = courseService.updateCourse(nonExistentId, "Name", "Description",
+                new BigDecimal("99.99"));
+
         // Then
         assertFalse(result.isPresent());
         verify(courseRepository).findById(nonExistentId);
@@ -223,10 +343,10 @@ public class CourseServiceImplTest {
     void deleteCourse() {
         // Given
         when(courseRepository.existsById(courseId)).thenReturn(true);
-        
+
         // When
         boolean result = courseService.deleteCourse(courseId);
-        
+
         // Then
         assertTrue(result);
         verify(courseRepository).existsById(courseId);
@@ -239,10 +359,10 @@ public class CourseServiceImplTest {
         // Given
         UUID nonExistentId = UUID.randomUUID();
         when(courseRepository.existsById(nonExistentId)).thenReturn(false);
-        
+
         // When
         boolean result = courseService.deleteCourse(nonExistentId);
-        
+
         // Then
         assertFalse(result);
         verify(courseRepository).existsById(nonExistentId);
