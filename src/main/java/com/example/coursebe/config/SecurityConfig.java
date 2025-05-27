@@ -13,7 +13,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 
 @Configuration
-public class SecurityConfig {    private final JwtService jwtService;
+public class SecurityConfig {
+    private final JwtService jwtService;
     
     public SecurityConfig(JwtService jwtService) {
         this.jwtService = jwtService;
@@ -22,13 +23,13 @@ public class SecurityConfig {    private final JwtService jwtService;
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
         return new JwtAuthenticationFilter(jwtService);
-    }
-    
-    @Bean
+    }    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
+            .httpBasic(httpBasic -> httpBasic.disable())
+            .formLogin(formLogin -> formLogin.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .anyRequest().permitAll()

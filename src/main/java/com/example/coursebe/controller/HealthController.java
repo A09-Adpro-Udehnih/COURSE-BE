@@ -27,7 +27,7 @@ public class HealthController {
         return "Course Service is running";
     }
     
-    @GetMapping("/token-info")
+    @GetMapping("token-info")
     public ResponseEntity<GlobalResponse<Map<String, Object>>> getTokenInfo(
             Principal principal,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {

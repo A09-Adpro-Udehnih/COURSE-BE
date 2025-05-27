@@ -295,23 +295,21 @@ public class TutorApplicationServiceImplTest {
     @DisplayName("Should delete most recent application by student ID")
     void deleteApplicationByStudentId_success() {
         // Given
-        when(tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId))
-            .thenReturn(1L);
+        when(tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId)).thenReturn(1); // Simulate 1 row deleted
 
         // When
         boolean result = tutorApplicationService.deleteApplicationByStudentId(studentId);
 
         // Then
         assertTrue(result);
-        verify(tutorApplicationRepository).deleteTopByStudentIdOrderByCreatedAtDesc(studentId);
+        verify(tutorApplicationRepository).deleteTopByStudentIdOrderByCreatedAtDesc(studentId); // Verify the correct method is called
     }
 
     @Test
     @DisplayName("Should return false when deleting application by student ID if not found")
     void deleteApplicationByStudentId_notFound() {
         // Given
-        when(tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId))
-            .thenReturn(0L);
+        when(tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId)).thenReturn(0); // Simulate 0 rows deleted
 
         // When
         boolean result = tutorApplicationService.deleteApplicationByStudentId(studentId);
@@ -428,14 +426,12 @@ public class TutorApplicationServiceImplTest {
         assertEquals(newStatus, result.get().getStatus());
         verify(tutorApplicationRepository).findById(applicationId);
         verify(tutorApplicationRepository).save(any(TutorApplication.class));
-    }
-
-    @Test
+    }    @Test
     @DisplayName("Should delete application by student ID asynchronously")
     void deleteApplicationByStudentIdAsync() throws Exception {
         // Given
         when(tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId))
-            .thenReturn(1L);
+            .thenReturn(1);
 
         // When
         CompletableFuture<Boolean> future = tutorApplicationService.deleteApplicationByStudentIdAsync(studentId);

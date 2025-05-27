@@ -28,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import com.example.coursebe.model.Course;
+import java.util.Collections;
 import com.example.coursebe.pattern.strategy.CourseSearchContext;
 import com.example.coursebe.pattern.strategy.CourseSearchStrategy;
 import com.example.coursebe.repository.CourseRepository;
@@ -310,8 +311,8 @@ public class CourseServiceImplTest {
         when(courseRepository.save(any(Course.class))).thenAnswer(i -> i.getArguments()[0]);
 
         // When
-        Optional<Course> result = courseService.updateCourse(courseId, updatedName, updatedDescription, updatedPrice);
-
+        Optional<Course> result = courseService.updateCourse(courseId, updatedName, updatedDescription, updatedPrice, Collections.emptyList());
+        
         // Then
         assertTrue(result.isPresent());
         assertEquals(updatedName, result.get().getName());
@@ -329,9 +330,8 @@ public class CourseServiceImplTest {
         when(courseRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
         // When
-        Optional<Course> result = courseService.updateCourse(nonExistentId, "Name", "Description",
-                new BigDecimal("99.99"));
-
+        Optional<Course> result = courseService.updateCourse(nonExistentId, "Name", "Description", new BigDecimal("99.99"), Collections.emptyList());
+        
         // Then
         assertFalse(result.isPresent());
         verify(courseRepository).findById(nonExistentId);
@@ -436,7 +436,7 @@ public class CourseServiceImplTest {
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            courseService.updateCourse(null, name, description, price);
+            courseService.updateCourse(null, name, description, price, Collections.emptyList());
         });
 
         assertEquals("Course ID cannot be null", exception.getMessage());
@@ -456,7 +456,7 @@ public class CourseServiceImplTest {
         when(courseRepository.save(any(Course.class))).thenAnswer(i -> i.getArguments()[0]);
 
         // When
-        Optional<Course> result = courseService.updateCourse(courseId, updatedName, updatedDescription, updatedPrice);
+        Optional<Course> result = courseService.updateCourse(courseId, updatedName, updatedDescription, updatedPrice, Collections.emptyList());
 
         // Then
         assertTrue(result.isPresent());
