@@ -436,7 +436,7 @@ public class CourseServiceImplTest {
 
         // When & Then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            courseService.updateCourse(null, name, description, price);
+            courseService.updateCourse(null, name, description, price, Collections.emptyList());
         });
 
         assertEquals("Course ID cannot be null", exception.getMessage());
@@ -456,7 +456,7 @@ public class CourseServiceImplTest {
         when(courseRepository.save(any(Course.class))).thenAnswer(i -> i.getArguments()[0]);
 
         // When
-        Optional<Course> result = courseService.updateCourse(courseId, updatedName, updatedDescription, updatedPrice);
+        Optional<Course> result = courseService.updateCourse(courseId, updatedName, updatedDescription, updatedPrice, Collections.emptyList());
 
         // Then
         assertTrue(result.isPresent());

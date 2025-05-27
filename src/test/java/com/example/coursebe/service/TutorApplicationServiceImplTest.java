@@ -426,14 +426,12 @@ public class TutorApplicationServiceImplTest {
         assertEquals(newStatus, result.get().getStatus());
         verify(tutorApplicationRepository).findById(applicationId);
         verify(tutorApplicationRepository).save(any(TutorApplication.class));
-    }
-
-    @Test
+    }    @Test
     @DisplayName("Should delete application by student ID asynchronously")
     void deleteApplicationByStudentIdAsync() throws Exception {
         // Given
         when(tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId))
-            .thenReturn(1L);
+            .thenReturn(1);
 
         // When
         CompletableFuture<Boolean> future = tutorApplicationService.deleteApplicationByStudentIdAsync(studentId);

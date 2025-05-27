@@ -161,17 +161,7 @@ public class CourseController {
                         errorMessage
                     ));
             });
-    }
-
-    // POST /courses
-    // DTO for course creation
-    public static class CreateCourseRequest {
-        public String name;
-        public String description;
-        public BigDecimal price;
-    }
-
-    // DTOs for course content update
+    }    // DTOs for course content update
     public static class ArticleDto {
         public UUID id; // Null for new articles, existing ID for updates
         public String title;
