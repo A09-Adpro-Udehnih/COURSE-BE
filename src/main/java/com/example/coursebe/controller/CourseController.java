@@ -252,7 +252,45 @@ public class CourseController {
                         errorMessage
                     ));
             });
-    }    // DTOs for course content update
+    }
+
+    @DeleteMapping("{id}/unenroll")
+    public CompletableFuture<ResponseEntity<ApiResponse<Void>>> unenrollCourse(
+            @PathVariable UUID id,
+            @RequestParam UUID userId
+    ) {
+        return enrollmentService.unenroll(userId, id)
+            .<ResponseEntity<ApiResponse<Void>>>thenApply(success -> {
+                if (success) {
+                    return ResponseEntity.ok(
+                        ApiResponse.success(
+                            HttpStatus.OK.value(),
+                            "Successfully unenrolled from the course.",
+                            null
+                        )
+                    );
+                } else {
+                    return ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.<Void>error(
+                            HttpStatus.BAD_REQUEST.value(),
+                            "Failed to unenroll from the course."
+                        ));
+                }
+            })
+            .exceptionally(ex -> {
+                String errorMessage = "Error unenrolling from course: " +
+                        (ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
+                return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<Void>error(
+                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        errorMessage
+                    ));
+            });
+    }
+
+    // DTOs for course content update
     public static class ArticleDto {
         public UUID id; // Null for new articles, existing ID for updates
         public String title;
