@@ -1,19 +1,18 @@
 package com.example.coursebe.config;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Base64;
-import java.util.Date;
-import java.util.UUID;
-
 @Service
 public class JwtService {
     // Use the same signing key as in AUTH-BE service and Caddy
     private final Key key = Keys.hmacShaKeyFor(
-        Base64.getDecoder().decode(System.getenv("JWT_TOKEN"))
+        Base64.getDecoder().decode(System.getenv("JWT_TOKEN") != null ? System.getenv("JWT_TOKEN") : "secretsampai256bitsinicumanbuattestingbiardigithubsoalnyagabacaenv")
     );
     
     public String extractUserIdFromToken(String token) {

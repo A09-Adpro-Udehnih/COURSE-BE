@@ -2,15 +2,18 @@ package com.example.coursebe.service;
 
 import com.example.coursebe.controller.CourseController; // Added for SectionDto
 import com.example.coursebe.model.Article; // Added
+import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import com.example.coursebe.model.Course;
 import com.example.coursebe.model.Section; // Added
 import com.example.coursebe.model.Enrollment; // <<< Import Enrollment
 import com.example.coursebe.repository.ArticleRepository; // Added
+import com.example.coursebe.pattern.strategy.CourseSearchContext;
+import com.example.coursebe.pattern.strategy.CourseSearchStrategy;
 import com.example.coursebe.repository.CourseRepository;
 import com.example.coursebe.repository.SectionRepository; // Added
 import com.example.coursebe.repository.EnrollmentRepository; // <<< Import EnrollmentRepository
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,70 +22,55 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.Map; // Added
+import java.util.concurrent.CompletableFuture; // Added for async methods
+import org.springframework.scheduling.annotation.Async; // Added for async methods
 
 /**
  * Implementation of CourseService
  * Uses the Repository pattern to abstract data access
- * Implements asynchronous programming for enhanced performance
  */
 @Service
 public class CourseServiceImpl implements CourseService {
-
     private final CourseRepository courseRepository;
     private final SectionRepository sectionRepository; // Added
     private final ArticleRepository articleRepository; // Added
     private final EnrollmentRepository enrollmentRepository; // <<< Add EnrollmentRepository field
-
-    @Autowired
-    public CourseServiceImpl(CourseRepository courseRepository,
+    private final CourseSearchContext courseSearchContext;    public CourseServiceImpl(CourseRepository courseRepository,
                            SectionRepository sectionRepository, // Added
                            ArticleRepository articleRepository, // Added
-                           EnrollmentRepository enrollmentRepository) { // <<< Add EnrollmentRepository to constructor
+                           EnrollmentRepository enrollmentRepository, // <<< Add EnrollmentRepository to constructor
+                           CourseSearchContext courseSearchContext) { // Add CourseSearchContext to constructor
         this.courseRepository = courseRepository;
         this.sectionRepository = sectionRepository; // Added
         this.articleRepository = articleRepository; // Added
         this.enrollmentRepository = enrollmentRepository; // <<< Initialize EnrollmentRepository
+        this.courseSearchContext = courseSearchContext; // Use injected CourseSearchContext
     }
 
     @Override
-    public List<Course> getAllCourses() {
-        return courseRepository.findAll();
-    }
-    
-    @Override
-    @Async
-    public CompletableFuture<List<Course>> getAllCoursesAsync() {
-        return CompletableFuture.completedFuture(courseRepository.findAll());
+    public Page<Course> getAllCourses(Pageable pageable) {
+        return courseRepository.findAll(pageable);
     }
 
     @Override
     public Optional<Course> getCourseById(UUID id) {
         return courseRepository.findById(id);
     }
-    
-    @Override
-    @Async
-    public CompletableFuture<Optional<Course>> getCourseByIdAsync(UUID id) {
-        return CompletableFuture.completedFuture(courseRepository.findById(id));
-    }
 
     @Override
     public List<Course> getCoursesByTutorId(UUID tutorId) {
         return courseRepository.findByTutorId(tutorId);
     }
-    
-    @Override
-    @Async
-    public CompletableFuture<List<Course>> getCoursesByTutorIdAsync(UUID tutorId) {
-        return CompletableFuture.completedFuture(courseRepository.findByTutorId(tutorId));
-    }
 
     @Override
-    public List<Course> searchCoursesByName(String keyword) {
-        return courseRepository.findByNameContainingIgnoreCase(keyword);
+    public Page<Course> searchCourses(String type, String keyword, Pageable pageable) {
+        if (!courseSearchContext.isValidStrategy(type)) {
+            throw new UnsupportedSearchTypeException(type);
+        }
+        CourseSearchStrategy strategy = courseSearchContext.getStrategy(type);
+        return strategy.search(keyword, pageable);
     }
 
     @Override
@@ -99,9 +87,8 @@ public class CourseServiceImpl implements CourseService {
         Course course = new Course(name, description, tutorId, price);
         return courseRepository.save(course);
     }
-    
+
     @Override
-    @Async
     @Transactional
     public CompletableFuture<Course> createCourseAsync(String name, String description, UUID tutorId, BigDecimal price) {
         return CompletableFuture.completedFuture(createCourse(name, description, tutorId, price));
@@ -217,8 +204,6 @@ public class CourseServiceImpl implements CourseService {
             articleRepository.delete(articleToRemove);
         }
     }
-
-
     @Override
     @Transactional
     public boolean deleteCourse(UUID id) {
@@ -232,8 +217,7 @@ public class CourseServiceImpl implements CourseService {
             courseRepository.deleteById(id);
             return true;
         }
-        
-        return false;
+          return false;
     }
 
     @Override
@@ -249,10 +233,5 @@ public class CourseServiceImpl implements CourseService {
         return enrollments.stream()
                 .map(enrollment -> enrollment.getStudentId().toString()) // Asumsi studentId adalah UUID
                 .collect(Collectors.toList());
-    }
-      @Override
-    @Async
-    public CompletableFuture<List<String>> getEnrolledStudentsAsync(UUID courseId) {
-        return CompletableFuture.completedFuture(getEnrolledStudents(courseId));
     }
 }
