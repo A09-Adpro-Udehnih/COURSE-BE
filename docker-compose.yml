@@ -1,0 +1,11 @@
+services:
+  web_server:
+    image: "${IMAGE_NAME}:${TAG}"
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      JWT_TOKEN: ${JWT_TOKEN}
+    restart: always

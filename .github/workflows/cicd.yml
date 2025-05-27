@@ -98,20 +98,23 @@ jobs:
             docker pull ${{ env.IMAGE_NAME }}:${{ env.TAG }}
 
             echo "Saving current image for rollback..."
-            CURRENT_IMAGE=$(docker inspect --format='{{.Config.Image}}' web_server || echo "none")
+            CURRENT_IMAGE=$(docker compose ps -q web_server | xargs docker inspect --format '{{.Config.Image}}' || echo "none")
             echo "$CURRENT_IMAGE" > ~/rollback_image.txt
 
-            echo "Stopping and removing current container..."
-            docker rm -f web_server || true
-
-            echo "Starting new container..."
-            docker run -d \
-              --name web_server \
-              -p 8081:8081 \
-              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-              -e DATABASE_USERNAME="${{ secrets.DATABASE_USERNAME }}" \
-              -e DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
-              -e JWT_TOKEN="${{ secrets.JWT_TOKEN }}" \
-              ${{ env.IMAGE_NAME }}:${{ env.TAG }}
-
+            echo "Creating environment variables..."
+            cat <<EOF > .env
+            IMAGE_NAME=${{ env.IMAGE_NAME }}
+            TAG=${{ env.TAG }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}
+            DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
+            JWT_TOKEN=${{ secrets.JWT_TOKEN }}
+            EOF
+      
+            echo "Stopping and removing previous container..."
+            docker compose -f docker-compose.yml down
+      
+            echo "Starting services with Docker Compose..."
+            docker compose -f docker-compose.yml up -d --remove-orphans
+      
             echo "Deployment successful."
