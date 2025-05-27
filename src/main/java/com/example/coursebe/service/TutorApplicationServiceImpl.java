@@ -225,7 +225,7 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         try {
             // Optimized approach: Use custom repository method to delete in single query
             // This reduces database round trips from 2 operations to 1
-            long deletedCount = tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId);
+            int deletedCount = tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId);
             
             // Log the operation for monitoring and debugging
             if (deletedCount > 0) {

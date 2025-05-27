@@ -1,6 +1,7 @@
 package com.example.coursebe.service;
 
 import com.example.coursebe.model.Course;
+import com.example.coursebe.controller.CourseController; // Added for SectionDto
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -8,6 +9,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Service interface for managing Course entities
@@ -73,14 +75,25 @@ public interface CourseService {
     Course createCourse(String name, String description, UUID tutorId, BigDecimal price);
     
     /**
-     * Update an existing course
+     * Create a new course asynchronously
+     * @param name Course name
+     * @param description Course description
+     * @param tutorId ID of the tutor creating the course
+     * @param price Course price
+     * @return CompletableFuture of created course
+     */
+    CompletableFuture<Course> createCourseAsync(String name, String description, UUID tutorId, BigDecimal price);
+    
+    /**
+     * Update an existing course, including its sections and articles.
      * @param id Course ID
      * @param name Updated name
      * @param description Updated description
      * @param price Updated price
+     * @param sections List of section DTOs representing the desired state of course content
      * @return Updated course or empty optional if course not found
      */
-    Optional<Course> updateCourse(UUID id, String name, String description, BigDecimal price);
+    Optional<Course> updateCourse(UUID id, String name, String description, BigDecimal price, List<CourseController.SectionDto> sections);
     
     /**
      * Delete a course

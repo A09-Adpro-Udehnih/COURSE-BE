@@ -45,8 +45,7 @@ public interface TutorApplicationRepository extends JpaRepository<TutorApplicati
      * @param status the PENDING status
      * @return true if the student has a pending application, false otherwise
      */
-    boolean existsByStudentIdAndStatus(UUID studentId, TutorApplication.Status status);
-      /**
+    boolean existsByStudentIdAndStatus(UUID studentId, TutorApplication.Status status);    /**
      * Delete the most recent application by student ID in a single query
      * This is optimized to reduce database round trips
      * Uses a more efficient approach with proper indexing support
@@ -58,7 +57,7 @@ public interface TutorApplicationRepository extends JpaRepository<TutorApplicati
                    "(SELECT id FROM (SELECT id FROM tutor_application " +
                    "WHERE student_id = :studentId ORDER BY created_at DESC LIMIT 1) AS temp)", 
            nativeQuery = true)
-    long deleteTopByStudentIdOrderByCreatedAtDesc(@Param("studentId") UUID studentId);
+    int deleteTopByStudentIdOrderByCreatedAtDesc(@Param("studentId") UUID studentId);
     
     /**
      * Delete all applications by student ID
