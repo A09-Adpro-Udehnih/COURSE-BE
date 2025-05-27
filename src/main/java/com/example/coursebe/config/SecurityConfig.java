@@ -13,7 +13,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 
 @Configuration
-public class SecurityConfig {    private final JwtService jwtService;
+public class SecurityConfig {
+    private final JwtService jwtService;
     
     public SecurityConfig(JwtService jwtService) {
         this.jwtService = jwtService;
@@ -27,19 +28,19 @@ public class SecurityConfig {    private final JwtService jwtService;
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf().disable()
-            .cors().and()
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authorize -> authorize
                 // Allow all requests for testing - we'll still process JWT tokens when present
                 .anyRequest().permitAll()
             )
-            .sessionManagement()
+            .sessionManagement(sess -> sess
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            .and()
+            )
             .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
+    }    
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
