@@ -44,11 +44,12 @@ class TutorApplicationControllerTest {
     @DisplayName("POST /tutors/registration - success")
     void registerAsTutor_success() {
         when(tutorApplicationService.hasPendingApplication(studentId)).thenReturn(false);
+        
         TutorApplication app = new TutorApplication(studentId);
         when(tutorApplicationService.submitApplication(studentId)).thenReturn(app);
 
         ResponseEntity<?> response = controller.registerAsTutor(principal);
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("success=true"));
         verify(tutorApplicationService).submitApplication(studentId);
     }
@@ -59,7 +60,7 @@ class TutorApplicationControllerTest {
         when(tutorApplicationService.hasPendingApplication(studentId)).thenReturn(true);
 
         ResponseEntity<?> response = controller.registerAsTutor(principal);
-        assertEquals(400, response.getStatusCodeValue());
+        assertEquals(400, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("pending tutor application"));
         verify(tutorApplicationService, never()).submitApplication(any());
     }
@@ -68,12 +69,14 @@ class TutorApplicationControllerTest {
     @DisplayName("GET /tutors/registration - has application")
     void getTutorRegistrationStatus_hasApplication() {
         TutorApplication app = new TutorApplication(studentId);
+        
         when(tutorApplicationService.getMostRecentApplicationByStudentId(studentId)).thenReturn(Optional.of(app));
 
         ResponseEntity<?> response = controller.getTutorRegistrationStatus(principal);
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("PENDING"));
         assertTrue(response.getBody().toString().contains("tutorApplicationId"));
+        verify(tutorApplicationService).getMostRecentApplicationByStudentId(studentId);
     }
 
     @Test
@@ -82,8 +85,9 @@ class TutorApplicationControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(studentId)).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = controller.getTutorRegistrationStatus(principal);
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("No tutor application found"));
+        verify(tutorApplicationService).getMostRecentApplicationByStudentId(studentId);
     }
 
     @Test
@@ -92,7 +96,7 @@ class TutorApplicationControllerTest {
         when(tutorApplicationService.deleteApplicationByStudentId(studentId)).thenReturn(true);
 
         ResponseEntity<?> response = controller.deleteTutorRegistration(principal);
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("deleted successfully"));
         verify(tutorApplicationService).deleteApplicationByStudentId(studentId);
     }
@@ -103,7 +107,7 @@ class TutorApplicationControllerTest {
         when(tutorApplicationService.deleteApplicationByStudentId(studentId)).thenReturn(false);
 
         ResponseEntity<?> response = controller.deleteTutorRegistration(principal);
-        assertEquals(404, response.getStatusCodeValue());
+        assertEquals(404, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("No tutor application found"));
         verify(tutorApplicationService).deleteApplicationByStudentId(studentId);
     }

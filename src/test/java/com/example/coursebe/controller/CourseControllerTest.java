@@ -1,18 +1,29 @@
 package com.example.coursebe.controller;
 
-import com.example.coursebe.common.ApiResponse;
-import com.example.coursebe.dto.CourseResponse;
-import com.example.coursebe.dto.EnrollmentResponse;
-import com.example.coursebe.dto.CreateCourseRequest;
-import com.example.coursebe.model.Course;
-import com.example.coursebe.model.Enrollment;
-import com.example.coursebe.model.TutorApplication;
-import com.example.coursebe.service.CourseService;
-import com.example.coursebe.service.EnrollmentService;
-import com.example.coursebe.service.TutorApplicationService;
-import com.example.coursebe.exception.UnsupportedSearchTypeException;
-import com.example.coursebe.dto.CourseResponse;
-import com.example.coursebe.dto.CourseEnrolledResponse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.security.Principal;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,16 +38,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-
-
-import java.math.BigDecimal;
-import java.security.Principal;
-import java.util.*;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import com.example.coursebe.common.ApiResponse;
+import com.example.coursebe.dto.CourseEnrolledResponse;
+import com.example.coursebe.dto.CourseResponse;
+import com.example.coursebe.dto.CreateCourseRequest;
+import com.example.coursebe.dto.EnrollmentResponse;
+import com.example.coursebe.model.Course;
+import com.example.coursebe.model.Enrollment;
+import com.example.coursebe.model.TutorApplication;
+import com.example.coursebe.service.CourseService;
+import com.example.coursebe.service.EnrollmentService;
+import com.example.coursebe.service.TutorApplicationService;
 
 @ExtendWith(MockitoExtension.class)
 class CourseControllerTest {
@@ -69,13 +81,13 @@ class CourseControllerTest {
         Pageable pageable = PageRequest.of(page, size);
         List<Course> mockCourses = Arrays.asList(
                 new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99")),
-                new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99"))
-        );
+                new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99")));
         Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 2);
         when(courseService.getAllCourses(pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, null, null, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, null, null,
+                page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -111,14 +123,14 @@ class CourseControllerTest {
         Pageable pageable = PageRequest.of(page, size);
 
         List<Course> mockCourses = Arrays.asList(
-                new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99"))
-        );
+                new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99")));
         Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 1);
 
         when(courseService.searchCourses(type, keyword, pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type, keyword, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type,
+                keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -154,14 +166,14 @@ class CourseControllerTest {
         Pageable pageable = PageRequest.of(page, size);
 
         List<Course> mockCourses = Arrays.asList(
-                new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99"))
-        );
+                new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99")));
         Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 1);
 
         when(courseService.searchCourses(type, keyword, pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type, keyword, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type,
+                keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -199,7 +211,8 @@ class CourseControllerTest {
         when(courseService.searchCourses(type, keyword, pageable)).thenReturn(emptyPage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type, keyword, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type,
+                keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -234,14 +247,14 @@ class CourseControllerTest {
 
         List<Course> mockCourses = Arrays.asList(
                 new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99")),
-                new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99"))
-        );
+                new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99")));
         Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 2);
 
         when(courseService.getAllCourses(pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type, keyword, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, type,
+                keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -273,14 +286,14 @@ class CourseControllerTest {
         Pageable pageable = PageRequest.of(page, size);
 
         List<Course> mockCourses = Arrays.asList(
-                new Course("Advanced Course", "Advanced topics", UUID.randomUUID(), new BigDecimal("149.99"))
-        );
+                new Course("Advanced Course", "Advanced topics", UUID.randomUUID(), new BigDecimal("149.99")));
         Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 11); // 11 total elements
 
         when(courseService.getAllCourses(pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, null, null, page, size);
+        ResponseEntity<ApiResponse<List<CourseResponse>>> response = courseController.getAllCourses(userId, null, null,
+                page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -310,15 +323,14 @@ class CourseControllerTest {
 
         List<Course> mockCourses = Arrays.asList(
                 new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99")),
-                new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99"))
-        );
+                new Course("Python Course", "Learn Python", UUID.randomUUID(), new BigDecimal("89.99")));
         Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 2);
 
         when(courseService.getEnrolledCourses(userId, pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseEnrolledResponse>>> response =
-                courseController.getMyAllCourses(userId, null, null, page, size);
+        ResponseEntity<ApiResponse<List<CourseEnrolledResponse>>> response = courseController.getMyAllCourses(userId,
+                null, null, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -362,15 +374,14 @@ class CourseControllerTest {
         Pageable pageable = PageRequest.of(page, size);
 
         List<Course> mockCourses = Arrays.asList(
-                new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99"))
-        );
+                new Course("Java Course", "Learn Java", UUID.randomUUID(), new BigDecimal("99.99")));
         Page<Course> mockCoursePage = new PageImpl<>(mockCourses, pageable, 1);
 
         when(courseService.searchEnrolledCourses(userId, type, keyword, pageable)).thenReturn(mockCoursePage);
 
         // When
-        ResponseEntity<ApiResponse<List<CourseEnrolledResponse>>> response =
-                courseController.getMyAllCourses(userId, type, keyword, page, size);
+        ResponseEntity<ApiResponse<List<CourseEnrolledResponse>>> response = courseController.getMyAllCourses(userId,
+                type, keyword, page, size);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -460,7 +471,8 @@ class CourseControllerTest {
         when(enrollmentService.isEnrolled(userId, courseId)).thenReturn(true);
 
         // When
-        ResponseEntity<ApiResponse<CourseEnrolledResponse>> response = courseController.getMyCourseById(courseId, userId);
+        ResponseEntity<ApiResponse<CourseEnrolledResponse>> response = courseController.getMyCourseById(courseId,
+                userId);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -503,7 +515,8 @@ class CourseControllerTest {
         when(enrollmentService.isEnrolled(userId, courseId)).thenReturn(false);
 
         // When
-        ResponseEntity<ApiResponse<CourseEnrolledResponse>> response = courseController.getMyCourseById(courseId, userId);
+        ResponseEntity<ApiResponse<CourseEnrolledResponse>> response = courseController.getMyCourseById(courseId,
+                userId);
 
         // Then
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
@@ -541,13 +554,12 @@ class CourseControllerTest {
 
         when(courseService.getCourseById(courseId)).thenReturn(Optional.of(mockCourse));
         when(enrollmentService.enroll(userId, courseId)).thenReturn(
-                CompletableFuture.completedFuture(mockEnrollment)
-        );
+                CompletableFuture.completedFuture(mockEnrollment));
 
         // When
-        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
-                courseController.enrollCourse(courseId, userId);
-        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
+        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse = courseController
+                .enrollCourse(courseId, userId);
+        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get(); // Wait for the async result
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -573,9 +585,9 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
 
         // When
-        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
-                courseController.enrollCourse(courseId, userId);
-        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
+        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse = courseController
+                .enrollCourse(courseId, userId);
+        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get(); // Wait for the async result
 
         // Then
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
@@ -601,13 +613,12 @@ class CourseControllerTest {
 
         when(courseService.getCourseById(courseId)).thenReturn(Optional.of(mockCourse));
         when(enrollmentService.enroll(userId, courseId)).thenReturn(
-                CompletableFuture.completedFuture(null)
-        );
+                CompletableFuture.completedFuture(null));
 
         // When
-        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
-                courseController.enrollCourse(courseId, userId);
-        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
+        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse = courseController
+                .enrollCourse(courseId, userId);
+        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get(); // Wait for the async result
 
         // Then
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
@@ -634,13 +645,12 @@ class CourseControllerTest {
 
         when(courseService.getCourseById(courseId)).thenReturn(Optional.of(mockCourse));
         when(enrollmentService.enroll(userId, courseId)).thenReturn(
-                CompletableFuture.failedFuture(testException)
-        );
+                CompletableFuture.failedFuture(testException));
 
         // When
-        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse =
-                courseController.enrollCourse(courseId, userId);
-        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get();  // Wait for the async result
+        CompletableFuture<ResponseEntity<ApiResponse<EnrollmentResponse>>> futureResponse = courseController
+                .enrollCourse(courseId, userId);
+        ResponseEntity<ApiResponse<EnrollmentResponse>> response = futureResponse.get(); // Wait for the async result
 
         // Then
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
@@ -664,13 +674,12 @@ class CourseControllerTest {
         UUID userId = UUID.randomUUID();
 
         when(enrollmentService.unenroll(userId, courseId)).thenReturn(
-                CompletableFuture.completedFuture(true)
-        );
+                CompletableFuture.completedFuture(true));
 
         // When
-        CompletableFuture<ResponseEntity<ApiResponse<Void>>> futureResponse =
-                courseController.unenrollCourse(courseId, userId);
-        ResponseEntity<ApiResponse<Void>> response = futureResponse.get();  // Wait for the async result
+        CompletableFuture<ResponseEntity<ApiResponse<Void>>> futureResponse = courseController.unenrollCourse(courseId,
+                userId);
+        ResponseEntity<ApiResponse<Void>> response = futureResponse.get(); // Wait for the async result
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -693,13 +702,12 @@ class CourseControllerTest {
         UUID userId = UUID.randomUUID();
 
         when(enrollmentService.unenroll(userId, courseId)).thenReturn(
-                CompletableFuture.completedFuture(false)
-        );
+                CompletableFuture.completedFuture(false));
 
         // When
-        CompletableFuture<ResponseEntity<ApiResponse<Void>>> futureResponse =
-                courseController.unenrollCourse(courseId, userId);
-        ResponseEntity<ApiResponse<Void>> response = futureResponse.get();  // Wait for the async result
+        CompletableFuture<ResponseEntity<ApiResponse<Void>>> futureResponse = courseController.unenrollCourse(courseId,
+                userId);
+        ResponseEntity<ApiResponse<Void>> response = futureResponse.get(); // Wait for the async result
 
         // Then
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
@@ -723,13 +731,12 @@ class CourseControllerTest {
         RuntimeException testException = new RuntimeException("Test exception");
 
         when(enrollmentService.unenroll(userId, courseId)).thenReturn(
-                CompletableFuture.failedFuture(testException)
-        );
+                CompletableFuture.failedFuture(testException));
 
         // When
-        CompletableFuture<ResponseEntity<ApiResponse<Void>>> futureResponse =
-                courseController.unenrollCourse(courseId, userId);
-        ResponseEntity<ApiResponse<Void>> response = futureResponse.get();  // Wait for the async result
+        CompletableFuture<ResponseEntity<ApiResponse<Void>>> futureResponse = courseController.unenrollCourse(courseId,
+                userId);
+        ResponseEntity<ApiResponse<Void>> response = futureResponse.get(); // Wait for the async result
 
         // Then
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
@@ -758,7 +765,7 @@ class CourseControllerTest {
         when(courseService.createCourse(req.name, req.description, tutorId, req.price)).thenReturn(course);
 
         ResponseEntity<?> response = courseController.createCourse(req, principal);
-        assertEquals(201, response.getStatusCodeValue());
+        assertEquals(201, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("Course created successfully"));
         verify(courseService).createCourse(req.name, req.description, tutorId, req.price);
     }
@@ -775,7 +782,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
 
         ResponseEntity<?> response = courseController.createCourse(req, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).createCourse(any(), any(), any(), any());
     }
@@ -790,7 +797,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = courseController.createCourse(req, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).createCourse(any(), any(), any(), any());
     }
@@ -802,22 +809,21 @@ class CourseControllerTest {
         app.setStatus(TutorApplication.Status.ACCEPTED);
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
         List<Course> courses = List.of(
-            new Course("Course 1", "Desc 1", tutorId, new BigDecimal("10000")),
-            new Course("Course 2", "Desc 2", tutorId, new BigDecimal("20000"))
-        );
+                new Course("Course 1", "Desc 1", tutorId, new BigDecimal("10000")),
+                new Course("Course 2", "Desc 2", tutorId, new BigDecimal("20000")));
         when(courseService.getCoursesByTutorId(tutorId)).thenReturn(courses);
 
         ResponseEntity<?> response = courseController.getMyCourses(principal);
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody() instanceof java.util.Map);
-        var respMap = (java.util.Map<?,?>) response.getBody();
+        var respMap = (java.util.Map<?, ?>) response.getBody();
         assertTrue((Boolean) respMap.get("success"));
         assertTrue(respMap.get("courses") instanceof List);
         List<?> respCourses = (List<?>) respMap.get("courses");
         assertEquals(2, respCourses.size());
         // Cek nama course baik jika elemen Course maupun Map hasil serialisasi
         assertTrue(respCourses.stream().anyMatch(c -> {
-            if (c instanceof java.util.Map<?,?> map) {
+            if (c instanceof java.util.Map<?, ?> map) {
                 return "Course 1".equals(map.get("name"));
             } else if (c instanceof Course courseObj) {
                 return "Course 1".equals(courseObj.getName());
@@ -835,7 +841,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
 
         ResponseEntity<?> response = courseController.getMyCourses(principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).getCoursesByTutorId(any());
     }
@@ -846,7 +852,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = courseController.getMyCourses(principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).getCoursesByTutorId(any());
     }
@@ -863,7 +869,7 @@ class CourseControllerTest {
         when(courseService.deleteCourse(courseId)).thenReturn(true);
 
         ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("deleted successfully"));
         verify(courseService).deleteCourse(courseId);
     }
@@ -877,7 +883,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
 
         ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).deleteCourse(any());
     }
@@ -893,7 +899,7 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.of(course));
 
         ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("Only the owner can delete"));
         verify(courseService, never()).deleteCourse(any());
     }
@@ -908,7 +914,7 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("Only the owner can delete"));
         verify(courseService, never()).deleteCourse(any());
     }
@@ -926,7 +932,7 @@ class CourseControllerTest {
         when(courseService.getEnrolledStudents(courseId)).thenReturn(students);
 
         ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("students"));
         assertTrue(response.getBody().toString().contains("student1@example.com"));
         verify(courseService).getEnrolledStudents(courseId);
@@ -941,7 +947,7 @@ class CourseControllerTest {
         when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
 
         ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
         verify(courseService, never()).getEnrolledStudents(any());
     }
@@ -957,7 +963,7 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.of(course));
 
         ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("Only the owner can view"));
         verify(courseService, never()).getEnrolledStudents(any());
     }
@@ -972,7 +978,7 @@ class CourseControllerTest {
         when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
 
         ResponseEntity<?> response = courseController.getEnrolledStudents(courseId, principal);
-        assertEquals(403, response.getStatusCodeValue());
+        assertEquals(403, response.getStatusCode().value());
         assertTrue(response.getBody().toString().contains("Only the owner can view"));
         verify(courseService, never()).getEnrolledStudents(any());
     }

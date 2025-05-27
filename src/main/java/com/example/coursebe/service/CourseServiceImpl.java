@@ -5,7 +5,6 @@ import com.example.coursebe.model.Course;
 import com.example.coursebe.pattern.strategy.CourseSearchContext;
 import com.example.coursebe.pattern.strategy.CourseSearchStrategy;
 import com.example.coursebe.repository.CourseRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,7 +24,6 @@ public class CourseServiceImpl implements CourseService {
     private final CourseRepository courseRepository;
     private final CourseSearchContext courseSearchContext;
 
-    @Autowired
     public CourseServiceImpl(CourseRepository courseRepository, CourseSearchContext courseSearchContext) {
         this.courseRepository = courseRepository;
         this.courseSearchContext = courseSearchContext;
