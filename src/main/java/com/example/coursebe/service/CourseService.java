@@ -43,7 +43,25 @@ public interface CourseService {
      * @return Page of matching courses
      */
     Page<Course> searchCourses(String type, String keyword, Pageable pageable);
-    
+
+    /**
+     * Get courses that a user has enrolled in
+     * @param userId User ID
+     * @param pageable Pagination information
+     * @return Page of courses the user is enrolled in
+     */
+    Page<Course> getEnrolledCourses(UUID userId, Pageable pageable);
+
+    /**
+     * Search through courses that a user has enrolled in
+     * @param userId User ID
+     * @param type Type of search (keyword, name, description)
+     * @param keyword Keyword to search for
+     * @param pageable Pagination information
+     * @return Page of matching enrolled courses
+     */
+    Page<Course> searchEnrolledCourses(UUID userId, String type, String keyword, Pageable pageable);
+
     /**
      * Create a new course
      * @param name Course name

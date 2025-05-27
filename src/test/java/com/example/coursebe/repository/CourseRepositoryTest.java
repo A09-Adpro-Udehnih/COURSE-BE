@@ -11,7 +11,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import com.example.coursebe.model.Enrollment;
 
+import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -245,5 +247,160 @@ public class CourseRepositoryTest {
         
         // then
         assertFalse(found.isPresent());
+    }
+
+    @Test
+    @DisplayName("Should find courses by student enrollment with pagination")
+    void findCoursesByStudentEnrollment() {
+        // Create a student and enrollments
+        UUID studentId = UUID.randomUUID();
+
+        // Create enrollment relationships
+        // We need to create Enrollment entities and associate them with courses
+        Enrollment enrollment1 = new Enrollment();
+        enrollment1.setStudentId(studentId);
+        enrollment1.setCourse(course1);
+        enrollment1.setEnrollmentDate(LocalDateTime.now());
+
+        Enrollment enrollment2 = new Enrollment();
+        enrollment2.setStudentId(studentId);
+        enrollment2.setCourse(course3);
+        enrollment2.setEnrollmentDate(LocalDateTime.now());
+
+        // Save enrollments
+        entityManager.persist(enrollment1);
+        entityManager.persist(enrollment2);
+        entityManager.flush();
+
+        // Find enrolled courses with pagination
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> enrolledCoursesPage = courseRepository.findByEnrollmentsStudentId(studentId, pageable);
+
+        // Assertions
+        assertNotNull(enrolledCoursesPage);
+        assertEquals(2, enrolledCoursesPage.getTotalElements());
+        assertEquals(1, enrolledCoursesPage.getTotalPages());
+
+        // Verify the student is enrolled in the correct courses
+        List<UUID> enrolledCourseIds = enrolledCoursesPage.getContent().stream()
+                .map(Course::getId)
+                .toList();
+        assertTrue(enrolledCourseIds.contains(course1.getId())); // Java Programming
+        assertTrue(enrolledCourseIds.contains(course3.getId())); // Python Programming
+        assertFalse(enrolledCourseIds.contains(course2.getId())); // Not enrolled in Advanced Java
+
+        // Test pagination
+        Pageable singleCoursePage = PageRequest.of(0, 1);
+        Page<Course> firstEnrolledCoursePage = courseRepository.findByEnrollmentsStudentId(studentId, singleCoursePage);
+        assertEquals(1, firstEnrolledCoursePage.getContent().size());
+        assertEquals(2, firstEnrolledCoursePage.getTotalElements());
+        assertEquals(2, firstEnrolledCoursePage.getTotalPages());
+    }
+
+    @Test
+    @DisplayName("Should find enrolled courses by name with pagination")
+    void findEnrolledCoursesByName() {
+        // Create a student and enrollments
+        UUID studentId = UUID.randomUUID();
+
+        // Create enrollment relationships
+        Enrollment enrollment1 = new Enrollment();
+        enrollment1.setStudentId(studentId);
+        enrollment1.setCourse(course1); // Java Programming
+        enrollment1.setEnrollmentDate(LocalDateTime.now());
+
+        Enrollment enrollment2 = new Enrollment();
+        enrollment2.setStudentId(studentId);
+        enrollment2.setCourse(course2); // Advanced Java
+        enrollment2.setEnrollmentDate(LocalDateTime.now());
+
+        // Save enrollments
+        entityManager.persist(enrollment1);
+        entityManager.persist(enrollment2);
+        entityManager.flush();
+
+        // Find enrolled Java courses
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> javaCoursesPage = courseRepository.findByEnrollmentsStudentIdAndNameContainingIgnoreCase(
+                studentId, "java", pageable);
+
+        // Assertions
+        assertNotNull(javaCoursesPage);
+        assertEquals(2, javaCoursesPage.getTotalElements());
+
+        // Verify case insensitivity
+        Page<Course> upperJavaCoursesPage = courseRepository.findByEnrollmentsStudentIdAndNameContainingIgnoreCase(
+                studentId, "JAVA", pageable);
+        assertEquals(2, upperJavaCoursesPage.getTotalElements());
+
+        // Test specific course search
+        Page<Course> advancedCoursesPage = courseRepository.findByEnrollmentsStudentIdAndNameContainingIgnoreCase(
+                studentId, "Advanced", pageable);
+        assertEquals(1, advancedCoursesPage.getTotalElements());
+        assertEquals(course2.getId(), advancedCoursesPage.getContent().get(0).getId());
+
+        // Test non-enrolled course is not returned
+        UUID otherStudentId = UUID.randomUUID();
+        Page<Course> otherStudentCourses = courseRepository.findByEnrollmentsStudentIdAndNameContainingIgnoreCase(
+                otherStudentId, "Java", pageable);
+        assertEquals(0, otherStudentCourses.getTotalElements());
+    }
+
+    @Test
+    @DisplayName("Should find enrolled courses by name or description with pagination")
+    void findEnrolledCoursesByNameOrDescription() {
+        // Create a student and enrollments
+        UUID studentId = UUID.randomUUID();
+
+        // Create enrollment relationships
+        Enrollment enrollment1 = new Enrollment();
+        enrollment1.setStudentId(studentId);
+        enrollment1.setCourse(course1); // Java Programming (has "basics" in description)
+        enrollment1.setEnrollmentDate(LocalDateTime.now());
+
+        Enrollment enrollment3 = new Enrollment();
+        enrollment3.setStudentId(studentId);
+        enrollment3.setCourse(course3); // Python Programming (has "basics" in description)
+        enrollment3.setEnrollmentDate(LocalDateTime.now());
+
+        // Save enrollments
+        entityManager.persist(enrollment1);
+        entityManager.persist(enrollment3);
+        entityManager.flush();
+
+        // Find enrolled courses with "basics" in description
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> basicsCoursesPage = courseRepository.findByEnrollmentsStudentIdAndNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
+                studentId, "basics", "basics", pageable);
+
+        // Assertions
+        assertNotNull(basicsCoursesPage);
+        assertEquals(2, basicsCoursesPage.getTotalElements());
+
+        // Verify content
+        List<UUID> basicsEnrolledCourseIds = basicsCoursesPage.getContent().stream()
+                .map(Course::getId)
+                .toList();
+        assertTrue(basicsEnrolledCourseIds.contains(course1.getId())); // Java basics
+        assertTrue(basicsEnrolledCourseIds.contains(course3.getId())); // Python basics
+
+        // Find courses by name (should find only one enrolled course)
+        Page<Course> pythonCoursesPage = courseRepository.findByEnrollmentsStudentIdAndNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
+                studentId, "Python", "Python", pageable);
+
+        assertEquals(1, pythonCoursesPage.getTotalElements());
+        assertEquals(course3.getId(), pythonCoursesPage.getContent().get(0).getId());
+
+        // Start a new transaction for the other student test
+        entityManager.clear();
+
+        // Check behavior with a student not enrolled in any courses
+        UUID otherStudentId = UUID.randomUUID();
+
+        Page<Course> otherStudentCourses = courseRepository.findByEnrollmentsStudentIdAndNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
+                otherStudentId, "basics", "basics", pageable);
+
+        // Should return empty results for a student with no enrollments
+        assertEquals(0, otherStudentCourses.getTotalElements());
     }
 }
