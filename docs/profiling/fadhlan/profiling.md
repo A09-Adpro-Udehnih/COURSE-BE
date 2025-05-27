@@ -8,7 +8,7 @@
 
 dapat dilihat bahwa fungsi delete tutor registration dapat lebih baik lagi karena terdapat dua operasi database terpisah yang tidak efisien - pertama query untuk mencari aplikasi yang akan dihapus, kemudian operasi delete terpisah yang menciptakan database round trips yang tidak perlu dan berpotensi menimbulkan race condition pada aplikasi dengan load tinggi.
 
-![alt text](image-3.png)
+![alt text](image-4.png)
 
 ## Perubahan Setelah Profiling
 
