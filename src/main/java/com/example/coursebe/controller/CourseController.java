@@ -18,6 +18,7 @@ import com.example.coursebe.model.TutorApplication;
 import com.example.coursebe.service.CourseService;
 import com.example.coursebe.service.TutorApplicationService;
 import com.example.coursebe.dto.CreateCourseRequest;
+import com.example.coursebe.dto.builder.CourseRequest;
 
 import java.math.BigDecimal;
 import java.security.Principal;
@@ -197,15 +198,47 @@ public class CourseController {
             resp.put("success", false);
             resp.put("message", "You are not allowed to create a course. Tutor application must be ACCEPTED.");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
-        }
-
-        Course course = courseService.createCourse(req.name, req.description, tutorId, req.price);
+        }        Course course = courseService.createCourse(req.name, req.description, tutorId, req.price);
         Map<String, Object> resp = new HashMap<>();
         resp.put("code", HttpStatus.CREATED.value());
         resp.put("success", true);
         resp.put("message", "Course created successfully.");
         resp.put("courseId", course.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+    }
+
+    // POST /courses/with-builder - Create course using builder pattern with validation
+    @PostMapping("/with-builder")
+    public ResponseEntity<?> createCourseWithBuilder(@RequestBody CourseRequest courseRequest, Principal principal) {
+        try {
+            // Extract tutor ID from JWT
+            UUID tutorId = UUID.fromString(principal.getName());
+            courseRequest.setTutorId(tutorId);
+            
+            // Use the service with builder pattern - this will validate tutor status
+            Course course = courseService.createCourseWithBuilder(courseRequest);
+            
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.CREATED.value());
+            resp.put("success", true);
+            resp.put("message", "Course created successfully using builder pattern.");
+            resp.put("courseId", course.getId());
+            resp.put("course", course);
+            return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+            
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.FORBIDDEN.value());
+            resp.put("success", false);
+            resp.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+        } catch (Exception e) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
+            resp.put("success", false);
+            resp.put("message", "An error occurred while creating the course: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(resp);
+        }
     }
 
     // GET /courses/mine

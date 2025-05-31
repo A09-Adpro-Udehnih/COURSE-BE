@@ -1,21 +1,25 @@
 package com.example.coursebe.service;
 
-import com.example.coursebe.controller.CourseController; // Added for SectionDto
-import com.example.coursebe.model.Article; // Added
+import com.example.coursebe.controller.CourseController;
+import com.example.coursebe.model.Article;
 import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import com.example.coursebe.model.Course;
-import com.example.coursebe.model.Section; // Added
-import com.example.coursebe.model.Enrollment; // <<< Import Enrollment
-import com.example.coursebe.repository.ArticleRepository; // Added
+import com.example.coursebe.model.Section;
+import com.example.coursebe.model.Enrollment;
+import com.example.coursebe.repository.ArticleRepository;
 import com.example.coursebe.pattern.strategy.CourseSearchContext;
 import com.example.coursebe.pattern.strategy.CourseSearchStrategy;
 import com.example.coursebe.repository.CourseRepository;
-import com.example.coursebe.repository.SectionRepository; // Added
-import com.example.coursebe.repository.EnrollmentRepository; // <<< Import EnrollmentRepository
+import com.example.coursebe.repository.SectionRepository;
+import com.example.coursebe.repository.EnrollmentRepository;
+import com.example.coursebe.dto.builder.CourseRequest;
+import com.example.coursebe.pattern.builder.CourseBuilder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -23,9 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.Map; // Added
-import java.util.concurrent.CompletableFuture; // Added for async methods
-import org.springframework.scheduling.annotation.Async; // Added for async methods
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Implementation of CourseService
@@ -34,19 +36,24 @@ import org.springframework.scheduling.annotation.Async; // Added for async metho
 @Service
 public class CourseServiceImpl implements CourseService {
     private final CourseRepository courseRepository;
-    private final SectionRepository sectionRepository; // Added
-    private final ArticleRepository articleRepository; // Added
-    private final EnrollmentRepository enrollmentRepository; // <<< Add EnrollmentRepository field
-    private final CourseSearchContext courseSearchContext;    public CourseServiceImpl(CourseRepository courseRepository,
-                           SectionRepository sectionRepository, // Added
-                           ArticleRepository articleRepository, // Added
-                           EnrollmentRepository enrollmentRepository, // <<< Add EnrollmentRepository to constructor
-                           CourseSearchContext courseSearchContext) { // Add CourseSearchContext to constructor
+    private final SectionRepository sectionRepository;
+    private final ArticleRepository articleRepository;
+    private final EnrollmentRepository enrollmentRepository;
+    private final CourseSearchContext courseSearchContext;
+    private final CourseBuilder courseBuilder;
+
+    public CourseServiceImpl(CourseRepository courseRepository,
+                           SectionRepository sectionRepository,
+                           ArticleRepository articleRepository,
+                           EnrollmentRepository enrollmentRepository,
+                           CourseSearchContext courseSearchContext,
+                           CourseBuilder courseBuilder) {
         this.courseRepository = courseRepository;
-        this.sectionRepository = sectionRepository; // Added
-        this.articleRepository = articleRepository; // Added
-        this.enrollmentRepository = enrollmentRepository; // <<< Initialize EnrollmentRepository
-        this.courseSearchContext = courseSearchContext; // Use injected CourseSearchContext
+        this.sectionRepository = sectionRepository;
+        this.articleRepository = articleRepository;
+        this.enrollmentRepository = enrollmentRepository;
+        this.courseSearchContext = courseSearchContext;
+        this.courseBuilder = courseBuilder;
     }
 
     @Override
@@ -218,9 +225,7 @@ public class CourseServiceImpl implements CourseService {
             return true;
         }
           return false;
-    }
-
-    @Override
+    }    @Override
     public List<String> getEnrolledStudents(UUID courseId) {
         Optional<Course> courseOpt = courseRepository.findById(courseId);
         if (courseOpt.isEmpty()) {
@@ -233,5 +238,29 @@ public class CourseServiceImpl implements CourseService {
         return enrollments.stream()
                 .map(enrollment -> enrollment.getStudentId().toString()) // Asumsi studentId adalah UUID
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public Course createCourseWithBuilder(CourseRequest courseRequest) {
+        // Validate the request and tutor status
+        courseRequest.validate();
+        
+        // Use the builder to create the course entity with validation
+        Course course = courseBuilder
+                .name(courseRequest.getName())
+                .description(courseRequest.getDescription())
+                .tutorId(courseRequest.getTutorId())
+                .price(courseRequest.getPrice())
+                .addSections(courseRequest.getSections())
+                .buildEntity();
+        
+        // Save the course (cascading will save sections and articles)
+        Course savedCourse = courseRepository.save(course);
+        
+        // Reset the builder for reuse
+        courseBuilder.reset();
+        
+        return savedCourse;
     }
 }

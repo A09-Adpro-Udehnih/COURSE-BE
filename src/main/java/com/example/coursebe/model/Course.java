@@ -6,11 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference; // Added import
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
@@ -36,6 +38,10 @@ public class Course {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Status status;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -63,6 +69,7 @@ public class Course {
         this.description = description;
         this.tutorId = tutorId;
         this.price = price != null ? price : BigDecimal.ZERO;
+        this.status = Status.PENDING;
     }
 
     @PrePersist
@@ -132,6 +139,10 @@ public class Course {
         return sections;
     }
 
+    public void setSections(List<Section> sections) {
+        this.sections = sections;
+    }
+
     public List<Enrollment> getEnrollments() {
         return enrollments;
     }
@@ -144,4 +155,18 @@ public class Course {
         return updatedAt;
     }
 
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    // Status enum for courses
+    public enum Status {
+        PENDING,
+        ACCEPTED,
+        DENIED
+    }
 }

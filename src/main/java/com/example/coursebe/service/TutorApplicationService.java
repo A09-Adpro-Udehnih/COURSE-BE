@@ -58,6 +58,13 @@ public interface TutorApplicationService {
      * @return CompletableFuture of optional containing the most recent application if it exists
      */
     CompletableFuture<Optional<TutorApplication>> getMostRecentApplicationByStudentIdAsync(UUID studentId);
+
+    /**
+     * Find the most recent tutor application by tutor ID (alias for findByStudentId)
+     * @param tutorId Tutor ID (same as studentId)
+     * @return TutorApplication if it exists, null otherwise
+     */
+    TutorApplication findByTutorId(UUID tutorId);
     
     /**
      * Check if a student has a pending application

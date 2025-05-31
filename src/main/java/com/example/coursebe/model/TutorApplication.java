@@ -16,12 +16,6 @@ import jakarta.persistence.Table;
 @Table(name = "tutor_application")
 public class TutorApplication {
     
-    public enum Status {
-        PENDING,
-        ACCEPTED,
-        DENIED
-    }
-    
     @Id
     private UUID id;
     
@@ -90,8 +84,14 @@ public class TutorApplication {
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
-    
-    public LocalDateTime getUpdatedAt() {
+      public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+    
+    // Status enum for tutor applications
+    public enum Status {
+        PENDING,
+        ACCEPTED,
+        DENIED
     }
 }

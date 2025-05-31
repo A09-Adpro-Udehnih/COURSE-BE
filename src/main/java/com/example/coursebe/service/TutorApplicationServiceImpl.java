@@ -92,6 +92,14 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         return CompletableFuture.completedFuture(
             tutorApplicationRepository.findTopByStudentIdOrderByCreatedAtDesc(studentId)
         );
+    }    
+    
+    @Override
+    public TutorApplication findByTutorId(UUID tutorId) {
+        // This is an alias for getMostRecentApplicationByStudentId since tutorId is the same as studentId
+        // Return the application directly or null if not found (to match CourseBuilder expectations)
+        Optional<TutorApplication> optionalApplication = getMostRecentApplicationByStudentId(tutorId);
+        return optionalApplication.orElse(null);
     }
 
     @Override

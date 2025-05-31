@@ -2,6 +2,7 @@ package com.example.coursebe.service;
 
 import com.example.coursebe.model.Course;
 import com.example.coursebe.controller.CourseController; // Added for SectionDto
+import com.example.coursebe.dto.builder.CourseRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -83,12 +84,20 @@ public interface CourseService {
      * @return true if deleted, false if not found
      */
     boolean deleteCourse(UUID id);
-    
-    /**
+      /**
      * Get list of students enrolled in a course
      * @param courseId Course ID
      * @return List of students (misal: email, id, atau objek Student)
      */
     List<String> getEnrolledStudents(UUID courseId);
+
+    /**
+     * Create a new course using the builder pattern with validation
+     * This method validates that the tutor has ACCEPTED status before creating the course
+     * @param courseRequest Course request containing all course data
+     * @return Created course
+     * @throws IllegalArgumentException if tutor status is not ACCEPTED
+     */
+    Course createCourseWithBuilder(CourseRequest courseRequest);
 
 }
