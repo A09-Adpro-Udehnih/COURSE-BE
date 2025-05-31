@@ -20,6 +20,7 @@ public class CourseResponse {
     private String description;
     private String tutor;
     private BigDecimal price;
+    private boolean isEnrolled;
     private List<Section> sections;
 
     @Getter

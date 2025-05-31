@@ -74,4 +74,7 @@ public class Enrollment {
         return enrollmentDate;
     }
 
+    public void setEnrollmentDate(LocalDateTime enrollmentDate) {
+        this.enrollmentDate = enrollmentDate;
+    }
 }

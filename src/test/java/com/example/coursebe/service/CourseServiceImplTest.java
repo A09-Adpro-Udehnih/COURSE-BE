@@ -260,6 +260,151 @@ public class CourseServiceImplTest {
     }
 
     @Test
+    @DisplayName("Should get enrolled courses for a user with pagination")
+    void getEnrolledCourses() {
+        // Given
+        UUID userId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> enrolledCoursesPage = new PageImpl<>(testCourses, pageable, 2);
+
+        when(courseRepository.findByEnrollmentsStudentId(userId, pageable)).thenReturn(enrolledCoursesPage);
+
+        // When
+        Page<Course> result = courseService.getEnrolledCourses(userId, pageable);
+
+        // Then
+        assertEquals(2, result.getTotalElements());
+        assertEquals(testCourses, result.getContent());
+        verify(courseRepository).findByEnrollmentsStudentId(userId, pageable);
+    }
+
+    @Test
+    @DisplayName("Should return empty page when user has no enrolled courses")
+    void getEnrolledCoursesEmpty() {
+        // Given
+        UUID userId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+
+        when(courseRepository.findByEnrollmentsStudentId(userId, pageable)).thenReturn(emptyPage);
+
+        // When
+        Page<Course> result = courseService.getEnrolledCourses(userId, pageable);
+
+        // Then
+        assertTrue(result.isEmpty());
+        assertEquals(0, result.getTotalElements());
+        verify(courseRepository).findByEnrollmentsStudentId(userId, pageable);
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when getting enrolled courses with null userId")
+    void getEnrolledCoursesNullUserId() {
+        // Given
+        UUID userId = null;
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // When & Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            courseService.getEnrolledCourses(userId, pageable);
+        });
+
+        assertEquals("User ID cannot be null", exception.getMessage());
+        verify(courseRepository, never()).findByEnrollmentsStudentId(any(), any());
+    }
+
+    @Test
+    @DisplayName("Should search enrolled courses using strategy with pagination")
+    void searchEnrolledCourses_WithValidStrategy() {
+        // Given
+        UUID userId = UUID.randomUUID();
+        String type = "name";
+        String keyword = "Java";
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> coursePage = new PageImpl<>(List.of(testCourses.get(1)), pageable, 1);
+
+        when(courseSearchContext.isValidStrategy(type)).thenReturn(true);
+        when(courseSearchContext.getStrategy(type)).thenReturn(mockSearchStrategy);
+        when(mockSearchStrategy.searchForUser(userId, keyword, pageable)).thenReturn(coursePage);
+
+        // When
+        Page<Course> result = courseService.searchEnrolledCourses(userId, type, keyword, pageable);
+
+        // Then
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Java Course", result.getContent().get(0).getName());
+        verify(courseSearchContext).isValidStrategy(type);
+        verify(courseSearchContext).getStrategy(type);
+        verify(mockSearchStrategy).searchForUser(userId, keyword, pageable);
+    }
+
+    @Test
+    @DisplayName("Should throw UnsupportedSearchTypeException when searching enrolled courses with invalid strategy")
+    void searchEnrolledCourses_WithInvalidStrategy() {
+        // Given
+        UUID userId = UUID.randomUUID();
+        String type = "invalid";
+        String keyword = "Java";
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(courseSearchContext.isValidStrategy(type)).thenReturn(false);
+
+        // When & Then
+        Exception exception = assertThrows(UnsupportedSearchTypeException.class, () -> {
+            courseService.searchEnrolledCourses(userId, type, keyword, pageable);
+        });
+
+        verify(courseSearchContext).isValidStrategy(type);
+        verify(courseSearchContext, never()).getStrategy(anyString());
+        verify(mockSearchStrategy, never()).searchForUser(any(), anyString(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when searching enrolled courses with null userId")
+    void searchEnrolledCourses_WithNullUserId() {
+        // Given
+        UUID userId = null;
+        String type = "name";
+        String keyword = "Java";
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // When & Then
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            courseService.searchEnrolledCourses(userId, type, keyword, pageable);
+        });
+
+        assertEquals("User ID cannot be null", exception.getMessage());
+        verify(courseSearchContext, never()).isValidStrategy(anyString());
+        verify(courseSearchContext, never()).getStrategy(anyString());
+        verify(mockSearchStrategy, never()).searchForUser(any(), anyString(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("Should handle empty search results when searching enrolled courses")
+    void searchEnrolledCourses_WithNoResults() {
+        // Given
+        UUID userId = UUID.randomUUID();
+        String type = "keyword";
+        String keyword = "Nonexistent";
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Course> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+
+        when(courseSearchContext.isValidStrategy(type)).thenReturn(true);
+        when(courseSearchContext.getStrategy(type)).thenReturn(mockSearchStrategy);
+        when(mockSearchStrategy.searchForUser(userId, keyword, pageable)).thenReturn(emptyPage);
+
+        // When
+        Page<Course> result = courseService.searchEnrolledCourses(userId, type, keyword, pageable);
+
+        // Then
+        assertTrue(result.isEmpty());
+        assertEquals(0, result.getTotalElements());
+        verify(courseSearchContext).isValidStrategy(type);
+        verify(courseSearchContext).getStrategy(type);
+        verify(mockSearchStrategy).searchForUser(userId, keyword, pageable);
+    }
+
+    @Test
     @DisplayName("Should create course")
     void createCourse() {
         // Given
