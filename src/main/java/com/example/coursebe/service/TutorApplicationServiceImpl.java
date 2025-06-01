@@ -13,12 +13,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Implementation of TutorApplicationService
- * Uses the State pattern for managing application status transitions
- * Implements asynchronous programming for enhanced performance
- * Optimized for database operations with single-query deletions
- */
 @Service
 public class TutorApplicationServiceImpl implements TutorApplicationService {
 
@@ -30,110 +24,45 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
     }
 
     @Override
-    public List<TutorApplication> getAllApplications() {
-        return tutorApplicationRepository.findAll();
-    }
-    
-    @Override
-    @Async
-    public CompletableFuture<List<TutorApplication>> getAllApplicationsAsync() {
-        return CompletableFuture.completedFuture(tutorApplicationRepository.findAll());
-    }
-
-    @Override
-    public List<TutorApplication> getApplicationsByStatus(TutorApplication.Status status) {
-        // Validate input
-        if (status == null) {
-            throw new IllegalArgumentException("Status cannot be null");
-        }
-        
-        return tutorApplicationRepository.findByStatus(status);
-    }
-    
-    @Override
-    @Async
-    public CompletableFuture<List<TutorApplication>> getApplicationsByStatusAsync(TutorApplication.Status status) {
-        // Validate input
-        if (status == null) {
-            throw new IllegalArgumentException("Status cannot be null");
-        }
-        
-        return CompletableFuture.completedFuture(tutorApplicationRepository.findByStatus(status));
-    }
-
-    @Override
-    public List<TutorApplication> getApplicationsByStudentId(UUID studentId) {
-        // Validate input
-        if (studentId == null) {
-            throw new IllegalArgumentException("Student ID cannot be null");
-        }
-        
-        return tutorApplicationRepository.findByStudentId(studentId);
-    }
-
-    @Override
     public Optional<TutorApplication> getMostRecentApplicationByStudentId(UUID studentId) {
-        // Validate input
         if (studentId == null) {
             throw new IllegalArgumentException("Student ID cannot be null");
         }
-        
         return tutorApplicationRepository.findTopByStudentIdOrderByCreatedAtDesc(studentId);
     }
     
     @Override
-    @Async
-    public CompletableFuture<Optional<TutorApplication>> getMostRecentApplicationByStudentIdAsync(UUID studentId) {
-        // Validate input
-        if (studentId == null) {
-            throw new IllegalArgumentException("Student ID cannot be null");
-        }
-        
-        return CompletableFuture.completedFuture(
-            tutorApplicationRepository.findTopByStudentIdOrderByCreatedAtDesc(studentId)
-        );
-    }    
-    
-    @Override
     public TutorApplication findByTutorId(UUID tutorId) {
-        // This is an alias for getMostRecentApplicationByStudentId since tutorId is the same as studentId
-        // Return the application directly or null if not found (to match CourseBuilder expectations)
         Optional<TutorApplication> optionalApplication = getMostRecentApplicationByStudentId(tutorId);
         return optionalApplication.orElse(null);
-    }    @Override
+    }
+
+    @Override
     public boolean hasPendingApplication(UUID studentId) {
-        // Validate input
         if (studentId == null) {
             throw new IllegalArgumentException("Student ID cannot be null");
         }
-        
         return tutorApplicationRepository.existsByStudentIdAndStatus(
             studentId, TutorApplication.Status.PENDING);
     }
     
     @Override
     public boolean hasAnyApplication(UUID studentId) {
-        // Validate input
         if (studentId == null) {
             throw new IllegalArgumentException("Student ID cannot be null");
         }
-        
         return !tutorApplicationRepository.findByStudentId(studentId).isEmpty();
-    }    @Override
+    }    
+    
+    @Override
     @Transactional
     public TutorApplication submitApplication(UUID studentId) {
-        // Validate input
         if (studentId == null) {
             throw new IllegalArgumentException("Student ID cannot be null");
         }
-        
-        // Check if student already has any application (not just pending)
         if (hasAnyApplication(studentId)) {
             return null;
         }
-        
-        // Create and save new application using the State pattern
-        // The initial state is PENDING (set in the constructor)
         TutorApplication application = new TutorApplication(studentId);
         return tutorApplicationRepository.save(application);
     }
@@ -148,7 +77,6 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
     @Override
     @Transactional
     public Optional<TutorApplication> updateApplicationStatus(UUID id, TutorApplication.Status status) {
-        // Validate inputs
         if (id == null) {
             throw new IllegalArgumentException("Application ID cannot be null");
         }
@@ -164,7 +92,7 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         
         TutorApplication application = optionalApplication.get();
         
-        // Apply state transition based on State pattern rules
+        // Apply state transition
         if (!isValidStateTransition(application.getStatus(), status)) {
             throw new IllegalStateException(
                 "Invalid state transition from " + application.getStatus() + " to " + status);
@@ -175,60 +103,28 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         TutorApplication updatedApplication = tutorApplicationRepository.save(application);
         return Optional.of(updatedApplication);
     }
-    
-    @Override
-    @Async
-    @Transactional
-    public CompletableFuture<Optional<TutorApplication>> updateApplicationStatusAsync(UUID id, TutorApplication.Status status) {
-        return CompletableFuture.completedFuture(updateApplicationStatus(id, status));
-    }
 
-    /**
-     * Implements the State pattern to determine valid transitions between application statuses
-     */
     private boolean isValidStateTransition(TutorApplication.Status currentStatus, TutorApplication.Status newStatus) {
         if (currentStatus == null || newStatus == null) {
             return false;
         }
-        
-        // Define valid transitions using State pattern:
+
         switch (currentStatus) {
             case PENDING:
-                // From PENDING, we can move to ACCEPTED or DENIED
-                return newStatus == TutorApplication.Status.ACCEPTED 
+                return newStatus == TutorApplication.Status.ACCEPTED
                     || newStatus == TutorApplication.Status.DENIED;
-            
             case ACCEPTED:
             case DENIED:
-                // Once ACCEPTED or DENIED, no further transitions allowed
                 return false;
                 
             default:
                 return false;
         }
     }
-
-    @Override
-    @Transactional
-    public boolean deleteApplication(UUID id) {
-        // Validate input
-        if (id == null) {
-            throw new IllegalArgumentException("Application ID cannot be null");
-        }
-        
-        // Check if application exists
-        if (tutorApplicationRepository.existsById(id)) {
-            tutorApplicationRepository.deleteById(id);
-            return true;
-        }
-        
-        return false;
-    }
     
     @Override
     @Transactional
     public boolean deleteApplicationByStudentId(UUID studentId) {
-        // Input validation
         if (studentId == null) {
             logger.warn("Attempted to delete application with null studentId");
             throw new IllegalArgumentException("Student ID cannot be null");
@@ -253,44 +149,6 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         } catch (Exception e) {
             logger.error("Error deleting application for studentId: {}", studentId, e);
             throw new RuntimeException("Failed to delete application", e);
-        }
-    }
-    
-    @Override
-    @Transactional
-    @Async
-    public CompletableFuture<Boolean> deleteApplicationByStudentIdAsync(UUID studentId) {
-        logger.info("Starting async deletion for studentId: {}", studentId);
-        
-        try {
-            // Asynchronous version for non-blocking operations
-            boolean result = deleteApplicationByStudentId(studentId);
-            logger.info("Async deletion completed for studentId: {}, result: {}", studentId, result);
-            return CompletableFuture.completedFuture(result);
-        } catch (Exception e) {
-            logger.error("Async deletion failed for studentId: {}", studentId, e);
-            return CompletableFuture.failedFuture(e);
-        }
-    }
-    
-    @Override
-    @Transactional
-    public int deleteAllApplicationsByStudentId(UUID studentId) {
-        // Batch deletion method for cleanup operations
-        if (studentId == null) {
-            logger.warn("Attempted to delete all applications with null studentId");
-            throw new IllegalArgumentException("Student ID cannot be null");
-        }
-        
-        logger.info("Attempting to delete all applications for studentId: {}", studentId);
-        
-        try {
-            int deletedCount = tutorApplicationRepository.deleteByStudentId(studentId);
-            logger.info("Successfully deleted all applications for studentId: {}, deletedCount: {}", studentId, deletedCount);
-            return deletedCount;
-        } catch (Exception e) {
-            logger.error("Error deleting all applications for studentId: {}", studentId, e);
-            throw new RuntimeException("Failed to delete all applications", e);
         }
     }
 }

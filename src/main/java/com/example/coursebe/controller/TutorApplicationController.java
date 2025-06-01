@@ -19,10 +19,10 @@ public class TutorApplicationController {
 
     public TutorApplicationController(TutorApplicationService tutorApplicationService) {
         this.tutorApplicationService = tutorApplicationService;
-    }    // POST /tutors/registration - Sync implementation for JWT compatibility
+    }    
+    
     @PostMapping
     public ResponseEntity<?> registerAsTutor(Principal principal) {
-        // Assume studentId is fetched from JWT principal
         UUID studentId = UUID.fromString(principal.getName());
         
         if (tutorApplicationService.hasAnyApplication(studentId)) {
@@ -33,7 +33,6 @@ public class TutorApplicationController {
             return ResponseEntity.badRequest().body(resp);
         }
         
-        // Masih menggunakan async di service layer
         TutorApplication app = tutorApplicationService.submitApplication(studentId);
         Map<String, Object> resp = new HashMap<>();
         resp.put("code", HttpStatus.OK.value());
@@ -43,7 +42,6 @@ public class TutorApplicationController {
         return ResponseEntity.ok(resp);
     }
 
-    // GET /tutors/registration - Sync implementation for JWT compatibility
     @GetMapping
     public ResponseEntity<?> getTutorRegistrationStatus(Principal principal) {
         UUID studentId = UUID.fromString(principal.getName());
@@ -66,7 +64,6 @@ public class TutorApplicationController {
         return ResponseEntity.ok(resp);
     }
 
-    // DELETE /tutors/registration
     @DeleteMapping
     public ResponseEntity<?> deleteTutorRegistration(Principal principal) {
         UUID studentId = UUID.fromString(principal.getName());

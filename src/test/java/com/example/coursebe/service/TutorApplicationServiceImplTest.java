@@ -74,54 +74,6 @@ public class TutorApplicationServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should get all applications")
-    void getAllApplications() {
-        // Given
-        when(tutorApplicationRepository.findAll()).thenReturn(testApplications);
-        
-        // When
-        List<TutorApplication> result = tutorApplicationService.getAllApplications();
-        
-        // Then
-        assertEquals(2, result.size());
-        assertEquals(testApplications, result);
-        verify(tutorApplicationRepository).findAll();
-    }
-
-    @Test
-    @DisplayName("Should get applications by status")
-    void getApplicationsByStatus() {
-        // Given
-        TutorApplication.Status status = TutorApplication.Status.PENDING;
-        when(tutorApplicationRepository.findByStatus(status))
-            .thenReturn(Collections.singletonList(testApplication));
-        
-        // When
-        List<TutorApplication> result = tutorApplicationService.getApplicationsByStatus(status);
-        
-        // Then
-        assertEquals(1, result.size());
-        assertEquals(testApplication, result.get(0));
-        verify(tutorApplicationRepository).findByStatus(status);
-    }
-
-    @Test
-    @DisplayName("Should get applications by student ID")
-    void getApplicationsByStudentId() {
-        // Given
-        when(tutorApplicationRepository.findByStudentId(studentId))
-            .thenReturn(Collections.singletonList(testApplication));
-        
-        // When
-        List<TutorApplication> result = tutorApplicationService.getApplicationsByStudentId(studentId);
-        
-        // Then
-        assertEquals(1, result.size());
-        assertEquals(testApplication, result.get(0));
-        verify(tutorApplicationRepository).findByStudentId(studentId);
-    }
-
-    @Test
     @DisplayName("Should get most recent application by student ID")
     void getMostRecentApplicationByStudentId() {
         // Given
@@ -261,37 +213,6 @@ public class TutorApplicationServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should delete application")
-    void deleteApplication() {
-        // Given
-        when(tutorApplicationRepository.existsById(applicationId)).thenReturn(true);
-        
-        // When
-        boolean result = tutorApplicationService.deleteApplication(applicationId);
-        
-        // Then
-        assertTrue(result);
-        verify(tutorApplicationRepository).existsById(applicationId);
-        verify(tutorApplicationRepository).deleteById(applicationId);
-    }
-
-    @Test
-    @DisplayName("Should return false when deleting non-existent application")
-    void deleteNonExistentApplication() {
-        // Given
-        UUID nonExistentId = UUID.randomUUID();
-        when(tutorApplicationRepository.existsById(nonExistentId)).thenReturn(false);
-        
-        // When
-        boolean result = tutorApplicationService.deleteApplication(nonExistentId);
-        
-        // Then
-        assertFalse(result);
-        verify(tutorApplicationRepository).existsById(nonExistentId);
-        verify(tutorApplicationRepository, never()).deleteById(any(UUID.class));
-    }
-
-    @Test
     @DisplayName("Should delete most recent application by student ID")
     void deleteApplicationByStudentId_success() {
         // Given
@@ -317,66 +238,6 @@ public class TutorApplicationServiceImplTest {
         // Then
         assertFalse(result);
         verify(tutorApplicationRepository).deleteTopByStudentIdOrderByCreatedAtDesc(studentId);
-    }
-
-    @Test
-    @DisplayName("Should get all applications asynchronously")
-    void getAllApplicationsAsync() throws Exception {
-        // Given
-        when(tutorApplicationRepository.findAll()).thenReturn(testApplications);
-        
-        // When
-        CompletableFuture<List<TutorApplication>> future = tutorApplicationService.getAllApplicationsAsync();
-        List<TutorApplication> result = future.get();
-        
-        // Then
-        assertEquals(2, result.size());
-        assertEquals(testApplications, result);
-        verify(tutorApplicationRepository).findAll();
-    }
-
-    @Test
-    @DisplayName("Should get applications by status asynchronously")
-    void getApplicationsByStatusAsync() throws Exception {
-        // Given
-        TutorApplication.Status status = TutorApplication.Status.PENDING;
-        when(tutorApplicationRepository.findByStatus(status))
-            .thenReturn(Collections.singletonList(testApplication));
-        
-        // When
-        CompletableFuture<List<TutorApplication>> future = tutorApplicationService.getApplicationsByStatusAsync(status);
-        List<TutorApplication> result = future.get();
-        
-        // Then
-        assertEquals(1, result.size());
-        assertEquals(testApplication, result.get(0));
-        verify(tutorApplicationRepository).findByStatus(status);
-    }
-
-    @Test
-    @DisplayName("Should throw exception when getting applications by null status asynchronously")
-    void getApplicationsByStatusAsync_nullStatus() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> {
-            tutorApplicationService.getApplicationsByStatusAsync(null);
-        });
-    }
-
-    @Test
-    @DisplayName("Should get most recent application by student ID asynchronously")
-    void getMostRecentApplicationByStudentIdAsync() throws Exception {
-        // Given
-        when(tutorApplicationRepository.findTopByStudentIdOrderByCreatedAtDesc(studentId))
-            .thenReturn(Optional.of(testApplication));
-        
-        // When
-        CompletableFuture<Optional<TutorApplication>> future = tutorApplicationService.getMostRecentApplicationByStudentIdAsync(studentId);
-        Optional<TutorApplication> result = future.get();
-        
-        // Then
-        assertTrue(result.isPresent());
-        assertEquals(testApplication, result.get());
-        verify(tutorApplicationRepository).findTopByStudentIdOrderByCreatedAtDesc(studentId);
     }
 
     @Test
@@ -410,114 +271,11 @@ public class TutorApplicationServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should update application status asynchronously")
-    void updateApplicationStatusAsync() throws Exception {
-        // Given
-        TutorApplication.Status newStatus = TutorApplication.Status.ACCEPTED;
-        when(tutorApplicationRepository.findById(applicationId)).thenReturn(Optional.of(testApplication));
-        when(tutorApplicationRepository.save(any(TutorApplication.class))).thenAnswer(i -> i.getArguments()[0]);
-        
-        // When
-        CompletableFuture<Optional<TutorApplication>> future = tutorApplicationService.updateApplicationStatusAsync(applicationId, newStatus);
-        Optional<TutorApplication> result = future.get();
-        
-        // Then
-        assertTrue(result.isPresent());
-        assertEquals(newStatus, result.get().getStatus());
-        verify(tutorApplicationRepository).findById(applicationId);
-        verify(tutorApplicationRepository).save(any(TutorApplication.class));
-    }    @Test
-    @DisplayName("Should delete application by student ID asynchronously")
-    void deleteApplicationByStudentIdAsync() throws Exception {
-        // Given
-        when(tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId))
-            .thenReturn(1);
-
-        // When
-        CompletableFuture<Boolean> future = tutorApplicationService.deleteApplicationByStudentIdAsync(studentId);
-        boolean result = future.get();
-
-        // Then
-        assertTrue(result);
-        verify(tutorApplicationRepository).deleteTopByStudentIdOrderByCreatedAtDesc(studentId);
-    }
-
-    @Test
-    @DisplayName("Should handle exception in delete application by student ID asynchronously")
-    void deleteApplicationByStudentIdAsync_exception() throws Exception {
-        // Given
-        when(tutorApplicationRepository.deleteTopByStudentIdOrderByCreatedAtDesc(studentId))
-            .thenThrow(new RuntimeException("Database error"));
-
-        // When
-        CompletableFuture<Boolean> future = tutorApplicationService.deleteApplicationByStudentIdAsync(studentId);
-
-        // Then
-        assertThrows(Exception.class, () -> future.get());
-        verify(tutorApplicationRepository).deleteTopByStudentIdOrderByCreatedAtDesc(studentId);
-    }
-
-    @Test
-    @DisplayName("Should delete all applications by student ID")
-    void deleteAllApplicationsByStudentId() {
-        // Given
-        when(tutorApplicationRepository.deleteByStudentId(studentId)).thenReturn(2);
-
-        // When
-        int result = tutorApplicationService.deleteAllApplicationsByStudentId(studentId);
-
-        // Then
-        assertEquals(2, result);
-        verify(tutorApplicationRepository).deleteByStudentId(studentId);
-    }
-
-    @Test
-    @DisplayName("Should handle exception in delete all applications by student ID")
-    void deleteAllApplicationsByStudentId_exception() {
-        // Given
-        when(tutorApplicationRepository.deleteByStudentId(studentId))
-            .thenThrow(new RuntimeException("Database error"));
-
-        // When & Then
-        assertThrows(RuntimeException.class, () -> {
-            tutorApplicationService.deleteAllApplicationsByStudentId(studentId);
-        });
-        verify(tutorApplicationRepository).deleteByStudentId(studentId);
-    }
-
-    @Test
-    @DisplayName("Should throw exception when getting applications by null status")
-    void getApplicationsByStatus_nullStatus() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> {
-            tutorApplicationService.getApplicationsByStatus(null);
-        });
-    }
-
-    @Test
-    @DisplayName("Should throw exception when getting applications by null student ID")
-    void getApplicationsByStudentId_nullStudentId() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> {
-            tutorApplicationService.getApplicationsByStudentId(null);
-        });
-    }
-
-    @Test
     @DisplayName("Should throw exception when getting most recent application by null student ID")
     void getMostRecentApplicationByStudentId_nullStudentId() {
         // When & Then
         assertThrows(IllegalArgumentException.class, () -> {
             tutorApplicationService.getMostRecentApplicationByStudentId(null);
-        });
-    }
-
-    @Test
-    @DisplayName("Should throw exception when getting most recent application by null student ID asynchronously")
-    void getMostRecentApplicationByStudentIdAsync_nullStudentId() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> {
-            tutorApplicationService.getMostRecentApplicationByStudentIdAsync(null);
         });
     }
 
@@ -558,29 +316,11 @@ public class TutorApplicationServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should throw exception when deleting application with null ID")
-    void deleteApplication_nullId() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> {
-            tutorApplicationService.deleteApplication(null);
-        });
-    }
-
-    @Test
     @DisplayName("Should throw exception when deleting application by null student ID")
     void deleteApplicationByStudentId_nullStudentId() {
         // When & Then
         assertThrows(IllegalArgumentException.class, () -> {
             tutorApplicationService.deleteApplicationByStudentId(null);
-        });
-    }
-
-    @Test
-    @DisplayName("Should throw exception when deleting all applications by null student ID")
-    void deleteAllApplicationsByStudentId_nullStudentId() {
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> {
-            tutorApplicationService.deleteAllApplicationsByStudentId(null);
         });
     }
 
