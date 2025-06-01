@@ -1,24 +1,26 @@
 package com.example.coursebe.service;
 
-import com.example.coursebe.controller.CourseController;
-import com.example.coursebe.enums.Status;
+import com.example.coursebe.dto.SectionDto;
+import com.example.coursebe.dto.builder.CourseRequest;
 import com.example.coursebe.model.Article;
 import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import com.example.coursebe.model.Course;
 import com.example.coursebe.model.Section;
 import com.example.coursebe.model.Enrollment;
+import com.example.coursebe.model.TutorApplication;
 import com.example.coursebe.repository.ArticleRepository;
 import com.example.coursebe.pattern.strategy.CourseSearchContext;
 import com.example.coursebe.pattern.strategy.CourseSearchStrategy;
 import com.example.coursebe.repository.CourseRepository;
 import com.example.coursebe.repository.SectionRepository;
 import com.example.coursebe.repository.EnrollmentRepository;
-import com.example.coursebe.dto.builder.CourseRequest;
 import com.example.coursebe.pattern.builder.CourseBuilder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -28,7 +30,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Implementation of CourseService
@@ -42,19 +43,22 @@ public class CourseServiceImpl implements CourseService {
     private final EnrollmentRepository enrollmentRepository;
     private final CourseSearchContext courseSearchContext;
     private final CourseBuilder courseBuilder;
+    private final TutorApplicationService tutorApplicationService;
 
     public CourseServiceImpl(CourseRepository courseRepository,
                            SectionRepository sectionRepository,
                            ArticleRepository articleRepository,
                            EnrollmentRepository enrollmentRepository,
                            CourseSearchContext courseSearchContext,
-                           CourseBuilder courseBuilder) {
+                           CourseBuilder courseBuilder,
+                           TutorApplicationService tutorApplicationService) {
         this.courseRepository = courseRepository;
         this.sectionRepository = sectionRepository;
         this.articleRepository = articleRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.courseSearchContext = courseSearchContext;
         this.courseBuilder = courseBuilder;
+        this.tutorApplicationService = tutorApplicationService;
     }
 
     @Override
@@ -118,13 +122,7 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional
-    public CompletableFuture<Course> createCourseAsync(String name, String description, UUID tutorId, BigDecimal price) {
-        return CompletableFuture.completedFuture(createCourse(name, description, tutorId, price));
-    }
-
-    @Override
-    @Transactional
-    public Optional<Course> updateCourse(UUID id, String name, String description, BigDecimal price, List<CourseController.SectionDto> sectionDtos) {
+    public Optional<Course> updateCourse(UUID id, String name, String description, BigDecimal price, List<SectionDto> sectionDtos) {
         if (id == null) {
             throw new IllegalArgumentException("Course ID cannot be null");
         }
@@ -154,34 +152,28 @@ public class CourseServiceImpl implements CourseService {
 
         Course updatedCourse = courseRepository.save(course);
         return Optional.of(updatedCourse);
-    }
-
-    private void updateSectionsAndArticles(Course course, List<CourseController.SectionDto> sectionDtos) {
+    }    private void updateSectionsAndArticles(Course course, List<SectionDto> sectionDtos) {
         Map<UUID, Section> existingSectionsMap = course.getSections().stream()
                 .collect(Collectors.toMap(Section::getId, s -> s));
         List<Section> updatedSections = new ArrayList<>();
 
-        for (CourseController.SectionDto sectionDto : sectionDtos) {
+        for (SectionDto sectionDto : sectionDtos) {
             Section section;
-            if (sectionDto.id == null) { // New section
-                section = new Section(sectionDto.title, sectionDto.position);
+            if (sectionDto.getId() == null) { // New section
+                section = new Section(sectionDto.getTitle(), sectionDto.getPosition());
                 section.setCourse(course);
             } else { // Existing section
-                section = existingSectionsMap.remove(sectionDto.id);
+                section = existingSectionsMap.remove(sectionDto.getId());
                 if (section == null) {
-                    // Section ID provided but not found in course, could throw error or ignore
-                    // For now, let's assume it's an error or treat as new if desired
-                    // Or, if it's a section from another course, it's an error.
-                    // Let's create it as new for now if not found, or you might want to throw an exception.
-                     section = new Section(sectionDto.title, sectionDto.position);
-                     section.setCourse(course);
+                    section = new Section(sectionDto.getTitle(), sectionDto.getPosition());
+                    section.setCourse(course);
                 }
-                section.setTitle(sectionDto.title);
-                section.setPosition(sectionDto.position);
+                section.setTitle(sectionDto.getTitle());
+                section.setPosition(sectionDto.getPosition());
             }
 
-            if (sectionDto.articles != null) {
-                updateArticles(section, sectionDto.articles);
+            if (sectionDto.getArticles() != null) {
+                updateArticles(section, sectionDto.getArticles());
             }
             updatedSections.add(section); // Add new or updated section
         }
@@ -190,38 +182,35 @@ public class CourseServiceImpl implements CourseService {
         // Clear and add all ensures correct associations and JPA lifecycle management
         course.getSections().clear();
         course.getSections().addAll(updatedSections);
-        
+
         // Explicitly delete sections that were in existingSectionsMap but not in sectionDtos
         // This is needed if orphanRemoval=true is not sufficient or if you want to manage it explicitly
         for (Section sectionToRemove : existingSectionsMap.values()) {
             sectionRepository.delete(sectionToRemove);
         }
-    }
-
-    private void updateArticles(Section section, List<CourseController.ArticleDto> articleDtos) {
+    }    private void updateArticles(Section section, List<com.example.coursebe.dto.ArticleDto> articleDtos) {
         Map<UUID, Article> existingArticlesMap = section.getArticles().stream()
                 .collect(Collectors.toMap(Article::getId, a -> a));
         List<Article> updatedArticles = new ArrayList<>();
 
-        for (CourseController.ArticleDto articleDto : articleDtos) {
+        for (com.example.coursebe.dto.ArticleDto articleDto : articleDtos) {
             Article article;
-            if (articleDto.id == null) { // New article
-                article = new Article(articleDto.title, articleDto.content, articleDto.position);
+            if (articleDto.getId() == null) { // New article
+                article = new Article(articleDto.getTitle(), articleDto.getContent(), articleDto.getPosition());
                 article.setSection(section);
             } else { // Existing article
-                article = existingArticlesMap.remove(articleDto.id);
+                article = existingArticlesMap.remove(articleDto.getId());
                 if (article == null) {
-                    // Similar to sections, handle error or create new
-                    article = new Article(articleDto.title, articleDto.content, articleDto.position);
+                    article = new Article(articleDto.getTitle(), articleDto.getContent(), articleDto.getPosition());
                     article.setSection(section);
                 }
-                article.setTitle(articleDto.title);
-                article.setContent(articleDto.content);
-                article.setPosition(articleDto.position);
+                article.setTitle(articleDto.getTitle());
+                article.setContent(articleDto.getContent());
+                article.setPosition(articleDto.getPosition());
             }
             updatedArticles.add(article);
         }
-        
+
         // Clear and add all ensures correct associations and JPA lifecycle management
         section.getArticles().clear();
         section.getArticles().addAll(updatedArticles);
@@ -232,6 +221,7 @@ public class CourseServiceImpl implements CourseService {
             articleRepository.delete(articleToRemove);
         }
     }
+
     @Override
     @Transactional
     public boolean deleteCourse(UUID id) {
@@ -239,68 +229,84 @@ public class CourseServiceImpl implements CourseService {
         if (id == null) {
             throw new IllegalArgumentException("Course ID cannot be null");
         }
-        
+
         // Check if course exists
         if (courseRepository.existsById(id)) {
             courseRepository.deleteById(id);
             return true;
         }
           return false;
+    }
+
+    @Override
+    @Transactional
+    public void deleteCourseWithValidation(UUID courseId, UUID tutorId) {
+        validateTutorAccess(tutorId);
+
+        Course course = courseRepository.findById(courseId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found."));
+
+        if (!course.getTutorId().equals(tutorId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "You are not allowed to delete this course. Only the owner can delete.");
+        }
+
+        courseRepository.delete(course);
     }    @Override
     public List<String> getEnrolledStudents(UUID courseId) {
         Optional<Course> courseOpt = courseRepository.findById(courseId);
         if (courseOpt.isEmpty()) {
-            return List.of(); // Atau throw exception jika course tidak ditemukan
+            return List.of();
         }
 
         Course course = courseOpt.get();
         List<Enrollment> enrollments = enrollmentRepository.findByCourse(course);
 
         return enrollments.stream()
-                .map(enrollment -> enrollment.getStudentId().toString()) // Asumsi studentId adalah UUID
+                .map(enrollment -> enrollment.getStudentId().toString())
                 .collect(Collectors.toList());
     }
 
     @Override
-    @Transactional
     public Course createCourseWithBuilder(CourseRequest courseRequest) {
-        // Validate the request and tutor status
-        courseRequest.validate();
-        
-        // Use the builder to create the course entity with validation
-        Course course = courseBuilder
-                .name(courseRequest.getName())
-                .description(courseRequest.getDescription())
-                .tutorId(courseRequest.getTutorId())
-                .price(courseRequest.getPrice())
-                .addSections(courseRequest.getSections())
-                .buildEntity();
-        
-        // Save the course (cascading will save sections and articles)
-        Course savedCourse = courseRepository.save(course);
-          // Reset the builder for reuse
-        courseBuilder.reset();
-        
-        return savedCourse;
+        return courseBuilder.buildEntity(courseRequest);
     }
 
-    /**
-     * Get the status of a course by its ID
-     * @param courseId Course ID
-     * @return Optional containing the course status if course is found
-     */    @Override
-    public Optional<Status> getCourseStatus(UUID courseId) {
-        return courseRepository.findById(courseId)
-                .map(Course::getStatus);
-    }    @Override
-    public Optional<Course> updateCourseStatus(UUID courseId, Status status) {
-        Optional<Course> courseOpt = courseRepository.findById(courseId);
-        if (courseOpt.isPresent()) {
-            Course course = courseOpt.get();
-            course.setStatus(status);
-            Course savedCourse = courseRepository.save(course);
-            return Optional.of(savedCourse);
+    @Override
+    public void validateTutorAccess(UUID tutorId) {
+        if (tutorId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tutor ID is required");
         }
-        return Optional.empty();
+        
+        Optional<TutorApplication> tutorApplicationOpt = tutorApplicationService.findByTutorId(tutorId);
+        if (tutorApplicationOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
+                "No tutor application found. You must be an approved tutor to create courses.");
+        }
+        
+        TutorApplication tutorApplication = tutorApplicationOpt.get();
+        if (tutorApplication.getStatus() != TutorApplication.Status.ACCEPTED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                String.format("Cannot create course. Your tutor status is %s, but must be ACCEPTED to create courses.", 
+                             tutorApplication.getStatus()));
+        }
+    }
+
+    @Override
+    public void validateCourseOwnership(UUID courseId, UUID tutorId) {
+        if (courseId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course ID is required");
+        }
+        if (tutorId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tutor ID is required");
+        }
+        
+        Course course = courseRepository.findById(courseId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+        
+        if (!course.getTutorId().equals(tutorId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "You are not allowed to perform this action. Only the course owner can do this.");
+        }
     }
 }

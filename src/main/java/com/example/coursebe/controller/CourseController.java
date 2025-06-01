@@ -4,24 +4,24 @@ import com.example.coursebe.common.ApiResponse;
 import com.example.coursebe.dto.CourseEnrolledResponse;
 import com.example.coursebe.dto.CourseResponse;
 import com.example.coursebe.dto.EnrollmentResponse;
+import com.example.coursebe.dto.UpdateCourseRequest;
 import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import com.example.coursebe.model.Enrollment;
 import com.example.coursebe.service.EnrollmentService;
+import com.example.coursebe.util.AuthenticationUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.coursebe.model.Course;
-import com.example.coursebe.model.TutorApplication;
 import com.example.coursebe.service.CourseService;
-import com.example.coursebe.service.TutorApplicationService;
 import com.example.coursebe.dto.CreateCourseRequest;
 import com.example.coursebe.dto.builder.CourseRequest;
 
-import java.math.BigDecimal;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -33,12 +33,10 @@ import java.util.stream.Collectors;
 public class CourseController {
     private final CourseService courseService;
     private final EnrollmentService enrollmentService;
-    private final TutorApplicationService tutorApplicationService;
 
-    public CourseController(CourseService courseService, EnrollmentService enrollmentService, TutorApplicationService tutorApplicationService) {
+    public CourseController(CourseService courseService, EnrollmentService enrollmentService) {
         this.courseService = courseService;
         this.enrollmentService = enrollmentService;
-        this.tutorApplicationService = tutorApplicationService;
     }
 
     @GetMapping
@@ -287,227 +285,147 @@ public class CourseController {
                     .body(ApiResponse.<Void>error(
                         HttpStatus.INTERNAL_SERVER_ERROR.value(),
                         errorMessage
-                    ));
-            });
+                    ));            });
     }
 
-    // DTOs for course content update
-    public static class ArticleDto {
-        public UUID id; // Null for new articles, existing ID for updates
-        public String title;
-        public String content;
-        public Integer position;
-    }
-
-    public static class SectionDto {
-        public UUID id; // Null for new sections, existing ID for updates
-        public String title;
-        public Integer position;
-        public List<ArticleDto> articles;
-    }
-
-    // DTO for course update (now includes sections)
-    public static class UpdateCourseRequest {
-        public String name;
-        public String description;
-        public BigDecimal price;
-        public List<SectionDto> sections; // To manage course content
-    }
-
-    // POST /courses - Sync implementation for JWT compatibility
+    // POST /courses - Clean implementation with proper validation
     @PostMapping
-    public ResponseEntity<?> createCourse(@RequestBody CreateCourseRequest req, Principal principal) {
-        UUID tutorId = UUID.fromString(principal.getName());
-        // Validasi: hanya tutor dengan status ACCEPTED yang boleh membuat kursus
-        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
-        if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to create a course. Tutor application must be ACCEPTED.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
-        }        Course course = courseService.createCourse(req.name, req.description, tutorId, req.price);
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("code", HttpStatus.CREATED.value());
-        resp.put("success", true);
-        resp.put("message", "Course created successfully.");
-        resp.put("courseId", course.getId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+    public ResponseEntity<ApiResponse<Map<String, Object>>> createCourse(@RequestBody CreateCourseRequest req, Principal principal) {
+        try {
+            UUID tutorId = AuthenticationUtil.parseUserId(principal);
+            courseService.validateTutorAccess(tutorId);
+            
+            Course course = courseService.createCourse(req.name, req.description, tutorId, req.price);
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("courseId", course.getId());
+            
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(HttpStatus.CREATED.value(), "Course created successfully.", data));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                .body(ApiResponse.error(e.getStatusCode().value(), e.getReason()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error occurred while creating the course: " + e.getMessage()));
+        }
     }
 
     // POST /courses/with-builder - Create course using builder pattern with validation
     @PostMapping("/with-builder")
-    public ResponseEntity<?> createCourseWithBuilder(@RequestBody CourseRequest courseRequest, Principal principal) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> createCourseWithBuilder(@RequestBody CourseRequest courseRequest, Principal principal) {
         try {
-            // Extract tutor ID from JWT
-            UUID tutorId = UUID.fromString(principal.getName());
+            UUID tutorId = AuthenticationUtil.parseUserId(principal);
             courseRequest.setTutorId(tutorId);
             
-            // Use the service with builder pattern - this will validate tutor status
             Course course = courseService.createCourseWithBuilder(courseRequest);
             
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.CREATED.value());
-            resp.put("success", true);
-            resp.put("message", "Course created successfully using builder pattern.");
-            resp.put("courseId", course.getId());
-            resp.put("course", course);
-            return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+            Map<String, Object> data = new HashMap<>();
+            data.put("courseId", course.getId());
+            data.put("course", course);
             
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(HttpStatus.CREATED.value(), "Course created successfully using builder pattern.", data));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                .body(ApiResponse.error(e.getStatusCode().value(), e.getReason()));
         } catch (IllegalArgumentException e) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(HttpStatus.FORBIDDEN.value(), e.getMessage()));
         } catch (Exception e) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
-            resp.put("success", false);
-            resp.put("message", "An error occurred while creating the course: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(resp);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error occurred while creating the course: " + e.getMessage()));
         }
     }
 
     // GET /courses/mine
     @GetMapping("/mine")
-    public ResponseEntity<?> getMyCourses(Principal principal) {
-        UUID tutorId = UUID.fromString(principal.getName());
-
-        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
-        if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to view courses. Tutor application must be ACCEPTED.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+    public ResponseEntity<ApiResponse<List<Course>>> getMyCourses(Principal principal) {
+        try {
+            UUID tutorId = AuthenticationUtil.parseUserId(principal);
+            courseService.validateTutorAccess(tutorId);
+            
+            List<Course> courses = courseService.getCoursesByTutorId(tutorId);
+            
+            return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Courses retrieved successfully.", courses));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                .body(ApiResponse.error(e.getStatusCode().value(), e.getReason()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error occurred while retrieving courses: " + e.getMessage()));
         }
-
-        var courses = courseService.getCoursesByTutorId(tutorId);
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("code", HttpStatus.OK.value());
-        resp.put("success", true);
-        resp.put("courses", courses);
-        return ResponseEntity.ok(resp);
     }
 
-    // PUT /courses/{courseId} - Sync implementation for JWT compatibility
+    // PUT /courses/{courseId} - Clean implementation with proper validation
     @PutMapping("/{courseId}")
-    public ResponseEntity<?> updateCourse(@PathVariable UUID courseId, @RequestBody UpdateCourseRequest req, Principal principal) {
-        UUID tutorId = UUID.fromString(principal.getName());
-
-        // Validasi: hanya tutor dengan status ACCEPTED yang boleh mengedit kursus
-        Optional<TutorApplication> appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
-        if (appOpt.isEmpty() || appOpt.get().getStatus() != TutorApplication.Status.ACCEPTED) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to update courses. Tutor application must be ACCEPTED.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
-        }
-
-        // Validasi: hanya pemilik kursus yang boleh mengedit
-        Optional<Course> courseOpt = courseService.getCourseById(courseId);
-        if (courseOpt.isEmpty()) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.NOT_FOUND.value());
-            resp.put("success", false);
-            resp.put("message", "Course not found.");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
-        }
-
-        if (!courseOpt.get().getTutorId().equals(tutorId)) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to update this course. Only the owner can update.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
-        }
-
-        // Pass the sections to the service layer - This will require CourseService to be updated
-        Optional<Course> updatedCourseOpt = courseService.updateCourse(courseId, req.name, req.description, req.price, req.sections);
-
-        if (updatedCourseOpt.isPresent()) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.OK.value());
-            resp.put("success", true);
-            resp.put("message", "Course updated successfully.");
-            resp.put("course", updatedCourseOpt.get());
-            return ResponseEntity.ok(resp);
-        } else {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value()); // Or NOT_FOUND if appropriate
-            resp.put("success", false);
-            resp.put("message", "Failed to update course.");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(resp);
+    public ResponseEntity<ApiResponse<Course>> updateCourse(@PathVariable UUID courseId, @RequestBody UpdateCourseRequest req, Principal principal) {
+        try {
+            UUID tutorId = AuthenticationUtil.parseUserId(principal);
+            courseService.validateTutorAccess(tutorId);
+            courseService.validateCourseOwnership(courseId, tutorId);
+            
+            Optional<Course> updatedCourseOpt = courseService.updateCourse(courseId, req.getName(), req.getDescription(), req.getPrice(), req.getSections());
+            
+            if (updatedCourseOpt.isPresent()) {
+                return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Course updated successfully.", updatedCourseOpt.get()));
+            } else {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Failed to update course."));
+            }
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                .body(ApiResponse.error(e.getStatusCode().value(), e.getReason()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error occurred while updating the course: " + e.getMessage()));
         }
     }
 
     // DELETE /courses/{courseId}
     @DeleteMapping("/{courseId}")
-    public ResponseEntity<?> deleteCourse(@PathVariable UUID courseId, Principal principal) {
-        UUID tutorId = UUID.fromString(principal.getName());
+    public ResponseEntity<ApiResponse<Void>> deleteCourse(@PathVariable UUID courseId, Principal principal) {
+        try {
+            UUID tutorId = AuthenticationUtil.parseUserId(principal);
+            // courseService.validateTutorAccess(tutorId); // Already handled in deleteCourseWithValidation
+            // courseService.validateCourseOwnership(courseId, tutorId); // Already handled in deleteCourseWithValidation
+            
+            // boolean deleted = courseService.deleteCourse(courseId); // Old call
+            courseService.deleteCourseWithValidation(courseId, tutorId); // New call
 
-        // Validasi: hanya tutor yang memiliki kursus dan status ACCEPTED yang bisa hapus
-        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
-        if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to delete this course. Tutor application must be ACCEPTED.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
-        }
-
-        var courseOpt = courseService.getCourseById(courseId);
-        if (courseOpt.isEmpty() || !courseOpt.get().getTutorId().equals(tutorId)) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to delete this course. Only the owner can delete.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
-        }
-        boolean deleted = courseService.deleteCourse(courseId);
-        Map<String, Object> resp = new HashMap<>();
-        if (deleted) {
-            resp.put("code", HttpStatus.OK.value());
-            resp.put("success", true);
-            resp.put("message", "Course deleted successfully.");
-            return ResponseEntity.ok(resp);
-        } else {
-            resp.put("code", HttpStatus.NOT_FOUND.value());
-            resp.put("success", false);
-            resp.put("message", "Course not found.");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
+            // if (deleted) {
+            return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Course deleted successfully.", null));
+            // } else {
+            //     return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            //         .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), "Course not found or could not be deleted."));
+            // }
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                .body(ApiResponse.error(e.getStatusCode().value(), e.getReason()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error occurred while deleting the course: " + e.getMessage()));
         }
     }
 
     // GET /courses/{courseId}/students
     @GetMapping("/{courseId}/students")
-    public ResponseEntity<?> getEnrolledStudents(@PathVariable UUID courseId, Principal principal) {
-        UUID tutorId = UUID.fromString(principal.getName());
-        // Validasi: hanya tutor owner & status ACCEPTED yang bisa akses
-        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
-        if (appOpt.isEmpty() || appOpt.get().getStatus() != com.example.coursebe.model.TutorApplication.Status.ACCEPTED) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to view students. Tutor application must be ACCEPTED.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+    public ResponseEntity<ApiResponse<List<String>>> getEnrolledStudents(@PathVariable UUID courseId, Principal principal) {
+        try {
+            UUID tutorId = AuthenticationUtil.parseUserId(principal);
+            courseService.validateTutorAccess(tutorId);
+            courseService.validateCourseOwnership(courseId, tutorId);
+            
+            List<String> students = courseService.getEnrolledStudents(courseId);
+            
+            return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Students retrieved successfully.", students));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                .body(ApiResponse.error(e.getStatusCode().value(), e.getReason()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error occurred while retrieving students: " + e.getMessage()));
         }
-        var courseOpt = courseService.getCourseById(courseId);
-        if (courseOpt.isEmpty() || !courseOpt.get().getTutorId().equals(tutorId)) {
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("code", HttpStatus.FORBIDDEN.value());
-            resp.put("success", false);
-            resp.put("message", "You are not allowed to view students. Only the owner can view.");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
-        }
-        var students = courseService.getEnrolledStudents(courseId);
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("code", HttpStatus.OK.value());
-        resp.put("success", true);
-        resp.put("students", students);
-        return ResponseEntity.ok(resp);
     }
 
     /* DTO Mapper helper */

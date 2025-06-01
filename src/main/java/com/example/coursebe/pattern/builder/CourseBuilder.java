@@ -113,7 +113,22 @@ public class CourseBuilder {
         course.setSections(courseSections);
         return course;
     }
-    
+      /**
+     * Build and validate the Course entity from a CourseRequest
+     * This method performs the critical business rule validation
+     */
+    public Course buildEntity(CourseRequest courseRequest) {
+        // Set the fields from the request (using Lombok-generated getters)
+        this.name = courseRequest.getName();
+        this.description = courseRequest.getDescription();
+        this.tutorId = courseRequest.getTutorId();
+        this.price = courseRequest.getPrice();
+        this.sections = courseRequest.getSections() != null ? new ArrayList<>(courseRequest.getSections()) : new ArrayList<>();
+        
+        // Use the existing buildEntity method
+        return buildEntity();
+    }
+
     /**
      * Validates that the tutor has ACCEPTED status and can create courses
      * This enforces the business rule that only accepted tutors can create courses
