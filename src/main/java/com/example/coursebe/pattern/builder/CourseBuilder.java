@@ -2,6 +2,7 @@ package com.example.coursebe.pattern.builder;
 
 import com.example.coursebe.dto.builder.CourseRequest;
 import com.example.coursebe.dto.builder.SectionRequest;
+import com.example.coursebe.enums.Status;
 import com.example.coursebe.model.Course;
 import com.example.coursebe.model.Section;
 import com.example.coursebe.model.TutorApplication;
@@ -93,7 +94,7 @@ public class CourseBuilder {
         course.setName(name);
         course.setDescription(description);
         course.setTutorId(tutorId);        course.setPrice(price);
-        course.setStatus(Course.Status.PENDING); // New courses start as PENDING
+        course.setStatus(Status.PENDING); // New courses start as PENDING
         
         // Build sections using SectionBuilder
         List<Section> courseSections = new ArrayList<>();

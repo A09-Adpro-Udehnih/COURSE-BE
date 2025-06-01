@@ -1,6 +1,7 @@
 package com.example.coursebe.service;
 
 import com.example.coursebe.controller.CourseController;
+import com.example.coursebe.enums.Status;
 import com.example.coursebe.model.Article;
 import com.example.coursebe.exception.UnsupportedSearchTypeException;
 import com.example.coursebe.model.Course;
@@ -277,10 +278,29 @@ public class CourseServiceImpl implements CourseService {
         
         // Save the course (cascading will save sections and articles)
         Course savedCourse = courseRepository.save(course);
-        
-        // Reset the builder for reuse
+          // Reset the builder for reuse
         courseBuilder.reset();
         
         return savedCourse;
+    }
+
+    /**
+     * Get the status of a course by its ID
+     * @param courseId Course ID
+     * @return Optional containing the course status if course is found
+     */    @Override
+    public Optional<Status> getCourseStatus(UUID courseId) {
+        return courseRepository.findById(courseId)
+                .map(Course::getStatus);
+    }    @Override
+    public Optional<Course> updateCourseStatus(UUID courseId, Status status) {
+        Optional<Course> courseOpt = courseRepository.findById(courseId);
+        if (courseOpt.isPresent()) {
+            Course course = courseOpt.get();
+            course.setStatus(status);
+            Course savedCourse = courseRepository.save(course);
+            return Optional.of(savedCourse);
+        }
+        return Optional.empty();
     }
 }

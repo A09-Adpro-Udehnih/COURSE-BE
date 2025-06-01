@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.example.coursebe.enums.Status;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
@@ -161,12 +162,5 @@ public class Course {
 
     public void setStatus(Status status) {
         this.status = status;
-    }
-
-    // Status enum for courses
-    public enum Status {
-        PENDING,
-        ACCEPTED,
-        DENIED
     }
 }

@@ -74,8 +74,8 @@ public class ArticleController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
         }
         return null;
-    }
-
+    }    
+    
     @PostMapping
     public ResponseEntity<?> createArticle(@PathVariable UUID courseId, @PathVariable UUID sectionId, @RequestBody ArticleRequest req, Principal principal) {
         ResponseEntity<?> ownershipCheck = checkTutorAndCourseOwnership(courseId, principal);
@@ -88,8 +88,40 @@ public class ArticleController {
             return sectionCheck;
         }
 
-        try {
+        // Check if course is approved before allowing article creation
+        Optional<Course> courseOpt = courseService.getCourseById(courseId);
+        if (courseOpt.isEmpty()) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.NOT_FOUND.value());
+            resp.put("success", false);
+            resp.put("message", "Course not found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
+        }        Course course = courseOpt.get();
+        
+        // Check if course is approved before allowing article creation
+        if (course.getStatus() == com.example.coursebe.enums.Status.PENDING) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.FORBIDDEN.value());
+            resp.put("success", false);
+            resp.put("message", "Cannot create articles for courses with PENDING status. Please wait for course approval.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+        }
+        
+        if (course.getStatus() == com.example.coursebe.enums.Status.DENIED) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.FORBIDDEN.value());
+            resp.put("success", false);
+            resp.put("message", "Cannot create articles for DENIED courses.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+        }        try {
             Article article = articleService.createArticle(sectionId, req.title, req.content, req.position);
+            if (article == null) {
+                Map<String, Object> resp = new HashMap<>();
+                resp.put("code", HttpStatus.NOT_FOUND.value());
+                resp.put("success", false);
+                resp.put("message", "Section not found.");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
+            }
             Map<String, Object> resp = new HashMap<>();
             resp.put("code", HttpStatus.CREATED.value());
             resp.put("success", true);
@@ -136,13 +168,38 @@ public class ArticleController {
         resp.put("success", true);
         resp.put("article", articleOpt.get());
         return ResponseEntity.ok(resp);
-    }
-
-    @PutMapping("/{articleId}")
+    }    @PutMapping("/{articleId}")
     public ResponseEntity<?> updateArticle(@PathVariable UUID courseId, @PathVariable UUID sectionId, @PathVariable UUID articleId, @RequestBody ArticleRequest req, Principal principal) {
         ResponseEntity<?> ownershipCheck = checkTutorAndCourseOwnership(courseId, principal);
         if (ownershipCheck != null) {
             return ownershipCheck;
+        }
+
+        // Check if course is approved before allowing article updates
+        Optional<Course> courseOpt = courseService.getCourseById(courseId);
+        if (courseOpt.isEmpty()) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.NOT_FOUND.value());
+            resp.put("success", false);
+            resp.put("message", "Course not found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
+        }        Course course = courseOpt.get();
+        
+        // Check if course is approved before allowing article updates
+        if (course.getStatus() == com.example.coursebe.enums.Status.PENDING) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.FORBIDDEN.value());
+            resp.put("success", false);
+            resp.put("message", "Cannot modify articles for courses with PENDING status. Please wait for course approval.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
+        }
+        
+        if (course.getStatus() == com.example.coursebe.enums.Status.DENIED) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.FORBIDDEN.value());
+            resp.put("success", false);
+            resp.put("message", "Cannot modify articles for DENIED courses.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
         }
 
         Optional<Article> articleOpt = articleService.getArticleById(articleId);
@@ -176,13 +233,30 @@ public class ArticleController {
             resp.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(resp);
         }
-    }
-
-    @DeleteMapping("/{articleId}")
+    }    @DeleteMapping("/{articleId}")
     public ResponseEntity<?> deleteArticle(@PathVariable UUID courseId, @PathVariable UUID sectionId, @PathVariable UUID articleId, Principal principal) {
         ResponseEntity<?> ownershipCheck = checkTutorAndCourseOwnership(courseId, principal);
         if (ownershipCheck != null) {
             return ownershipCheck;
+        }
+
+        // Check if course is approved before allowing article deletion
+        Optional<Course> courseOpt = courseService.getCourseById(courseId);
+        if (courseOpt.isEmpty()) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.NOT_FOUND.value());
+            resp.put("success", false);
+            resp.put("message", "Course not found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(resp);
+        }
+
+        Course course = courseOpt.get();
+        if (course.getStatus() != com.example.coursebe.enums.Status.ACCEPTED) {
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("code", HttpStatus.FORBIDDEN.value());
+            resp.put("success", false);
+            resp.put("message", "Cannot delete articles for courses that are not approved. Current status: " + course.getStatus());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(resp);
         }
 
         Optional<Article> articleOpt = articleService.getArticleById(articleId);

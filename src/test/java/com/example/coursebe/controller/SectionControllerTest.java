@@ -29,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import com.example.coursebe.controller.SectionController;
 import com.example.coursebe.model.Course;
 import com.example.coursebe.model.Section;
 import com.example.coursebe.model.TutorApplication;

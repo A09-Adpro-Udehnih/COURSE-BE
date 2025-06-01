@@ -3,6 +3,7 @@ package com.example.coursebe.service;
 import com.example.coursebe.model.Course;
 import com.example.coursebe.controller.CourseController; // Added for SectionDto
 import com.example.coursebe.dto.builder.CourseRequest;
+import com.example.coursebe.enums.Status;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -118,4 +119,18 @@ public interface CourseService {
      */
     Course createCourseWithBuilder(CourseRequest courseRequest);
 
+    /**
+     * Update the status of an existing course
+     * @param courseId Course ID
+     * @param status New status to set
+     * @return Updated course or empty optional if course not found
+     */
+    Optional<Course> updateCourseStatus(UUID courseId, Status status);
+
+    /**
+     * Get the status of a course
+     * @param courseId Course ID
+     * @return Optional containing the course status if found
+     */
+    Optional<Status> getCourseStatus(UUID courseId);
 }
