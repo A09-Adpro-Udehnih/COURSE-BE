@@ -32,6 +32,15 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
     }
     
     @Override
+    public TutorApplication getMostRecentApplicationByStudentIdOrThrow(UUID studentId) {
+        if (studentId == null) {
+            throw new IllegalArgumentException("Student ID cannot be null");
+        }
+        return tutorApplicationRepository.findTopByStudentIdOrderByCreatedAtDesc(studentId)
+                .orElseThrow(() -> new com.example.coursebe.exception.ApplicationNotFoundException("No tutor application found."));
+    }
+    
+    @Override
     public TutorApplication findByTutorId(UUID tutorId) {
         Optional<TutorApplication> optionalApplication = getMostRecentApplicationByStudentId(tutorId);
         return optionalApplication.orElse(null);
@@ -52,14 +61,14 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
             throw new IllegalArgumentException("Student ID cannot be null");
         }
         return !tutorApplicationRepository.findByStudentId(studentId).isEmpty();
-    }    
-      @Override
+    }    @Override
     @Transactional
     public TutorApplication submitApplication(UUID studentId) {
         if (studentId == null) {
             throw new IllegalArgumentException("Student ID cannot be null");
-        }        if (hasAnyApplication(studentId)) {
-            return null;
+        }
+        if (hasAnyApplication(studentId)) {
+            throw new com.example.coursebe.exception.ApplicationExistsException("You already have a tutor application.");
         }
         TutorApplication application = new TutorApplication(studentId);
         return tutorApplicationRepository.save(application);
@@ -119,8 +128,7 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
                 return false;
         }
     }
-    
-    @Override
+      @Override
     @Transactional
     public boolean deleteApplicationByStudentId(UUID studentId) {
         if (studentId == null) {
@@ -142,11 +150,17 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
                 return true;
             } else {
                 logger.info("No application found to delete for studentId: {}", studentId);
-                return false;
+                throw new com.example.coursebe.exception.ApplicationNotFoundException("No tutor application found to delete.");
             }
         } catch (Exception e) {
             logger.error("Error deleting application for studentId: {}", studentId, e);
             throw new RuntimeException("Failed to delete application", e);
         }
+    }
+    
+    @Override
+    @Transactional
+    public void deleteApplicationByStudentIdOrThrow(UUID studentId) {
+        deleteApplicationByStudentId(studentId);
     }
 }

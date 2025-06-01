@@ -32,6 +32,29 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<GlobalResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        GlobalResponse<Void> response = GlobalResponse.<Void>builder()
+                .code(HttpStatus.BAD_REQUEST)
+                .success(false)
+                .message("Invalid input: " + ex.getMessage())
+                .data(null)
+                .build();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(ApplicationExistsException.class)
+    public ResponseEntity<GlobalResponse<Void>> handleApplicationExistsException(ApplicationExistsException ex) {
+        GlobalResponse<Void> response = GlobalResponse.badRequest(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(ApplicationNotFoundException.class)
+    public ResponseEntity<GlobalResponse<Void>> handleApplicationNotFoundException(ApplicationNotFoundException ex) {
+        GlobalResponse<Void> response = GlobalResponse.notFound(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<GlobalResponse<Void>> handleRuntimeException(RuntimeException ex) {
         GlobalResponse<Void> response = GlobalResponse.<Void>builder()
@@ -42,4 +65,4 @@ public class GlobalExceptionHandler {
                 .build();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
-} 
+}

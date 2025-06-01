@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 
 public interface TutorApplicationService {
     Optional<TutorApplication> getMostRecentApplicationByStudentId(UUID studentId);
+    TutorApplication getMostRecentApplicationByStudentIdOrThrow(UUID studentId);
     TutorApplication findByTutorId(UUID tutorId);
     boolean hasPendingApplication(UUID studentId);
     boolean hasAnyApplication(UUID studentId);
@@ -16,4 +17,5 @@ public interface TutorApplicationService {
     CompletableFuture<TutorApplication> submitApplicationAsync(UUID studentId);
     Optional<TutorApplication> updateApplicationStatus(UUID id, TutorApplication.Status status);
     boolean deleteApplicationByStudentId(UUID studentId);
+    void deleteApplicationByStudentIdOrThrow(UUID studentId);
 }
