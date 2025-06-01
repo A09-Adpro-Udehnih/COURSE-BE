@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -88,12 +89,12 @@ public class CourseBuilder {
         
         // Critical validation: Check tutor status
         validateTutorStatus(tutorId);
-        
-        // Create the course entity
+          // Create the course entity
         Course course = new Course();
         course.setName(name);
         course.setDescription(description);
-        course.setTutorId(tutorId);        course.setPrice(price);
+        course.setTutorId(tutorId);
+        course.setPrice(price);
         course.setStatus(Status.PENDING); // New courses start as PENDING
         
         // Build sections using SectionBuilder
@@ -122,11 +123,13 @@ public class CourseBuilder {
             throw new IllegalArgumentException("Tutor ID is required");
         }
         
-        TutorApplication tutorApplication = tutorApplicationService.findByTutorId(tutorId);
-        if (tutorApplication == null) {
+        Optional<TutorApplication> tutorApplicationOpt = tutorApplicationService.findByTutorId(tutorId);
+        if (tutorApplicationOpt.isEmpty()) {
             throw new IllegalArgumentException("Tutor application not found for tutor ID: " + tutorId);
         }
-          if (tutorApplication.getStatus() != TutorApplication.Status.ACCEPTED) {
+        
+        TutorApplication tutorApplication = tutorApplicationOpt.get();
+        if (tutorApplication.getStatus() != TutorApplication.Status.ACCEPTED) {
             throw new IllegalArgumentException(
                 String.format("Cannot create course. Tutor status is %s, but must be ACCEPTED to create courses.", 
                              tutorApplication.getStatus())

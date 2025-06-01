@@ -1,21 +1,20 @@
 package com.example.coursebe.service;
 
 import com.example.coursebe.model.TutorApplication;
+import jakarta.validation.constraints.NotNull;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public interface TutorApplicationService {
-    Optional<TutorApplication> getMostRecentApplicationByStudentId(UUID studentId);
-    TutorApplication getMostRecentApplicationByStudentIdOrThrow(UUID studentId);
-    TutorApplication findByTutorId(UUID tutorId);
-    boolean hasPendingApplication(UUID studentId);
-    boolean hasAnyApplication(UUID studentId);
-    TutorApplication submitApplication(UUID studentId);
-    CompletableFuture<TutorApplication> submitApplicationAsync(UUID studentId);
-    Optional<TutorApplication> updateApplicationStatus(UUID id, TutorApplication.Status status);
-    boolean deleteApplicationByStudentId(UUID studentId);
-    void deleteApplicationByStudentIdOrThrow(UUID studentId);
+    Optional<TutorApplication> getMostRecentApplicationByStudentId(@NotNull UUID studentId);
+    TutorApplication getMostRecentApplicationByStudentIdOrThrow(@NotNull UUID studentId);
+    Optional<TutorApplication> findByTutorId(@NotNull UUID tutorId);
+    boolean hasPendingApplication(@NotNull UUID studentId);
+    boolean hasAnyApplication(@NotNull UUID studentId);
+    TutorApplication submitApplication(@NotNull UUID studentId);
+    CompletableFuture<TutorApplication> submitApplicationAsync(@NotNull UUID studentId);
+    Optional<TutorApplication> updateApplicationStatus(@NotNull UUID id, @NotNull TutorApplication.Status status);
+    boolean deleteApplicationByStudentId(@NotNull UUID studentId);
 }

@@ -10,19 +10,24 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/tutors/registration")
 public class TutorApplicationController {
     private final TutorApplicationService tutorApplicationService;    public TutorApplicationController(TutorApplicationService tutorApplicationService) {
         this.tutorApplicationService = tutorApplicationService;
-    }
-
-    @PostMapping
+    }    @PostMapping
     public ResponseEntity<GlobalResponse<TutorApplicationResponse>> registerAsTutor(Principal principal) {
         UUID studentId = parseStudentId(principal);
         TutorApplication app = tutorApplicationService.submitApplication(studentId);
         return ResponseEntity.ok(GlobalResponse.success("Tutor application submitted.", toResponse(app)));
+    }    @PostMapping("/async")
+    public CompletableFuture<ResponseEntity<GlobalResponse<TutorApplicationResponse>>> registerAsTutorAsync(Principal principal) {
+        UUID studentId = parseStudentId(principal);
+        return tutorApplicationService.submitApplicationAsync(studentId)
+                .thenApply(app -> ResponseEntity.ok(GlobalResponse.success("Tutor application submitted asynchronously.", toResponse(app))))
+                .exceptionally(ex -> ResponseEntity.badRequest().body(GlobalResponse.badRequest(ex.getMessage())));
     }
 
     @GetMapping
@@ -35,12 +40,15 @@ public class TutorApplicationController {
                         .status(app.getStatus().name())
                         .tutorApplicationId(app.getId())
                         .build()));
-    }
-
-    @DeleteMapping
+    }    @DeleteMapping
     public ResponseEntity<GlobalResponse<Void>> deleteTutorRegistration(Principal principal) {
         UUID studentId = parseStudentId(principal);
-        tutorApplicationService.deleteApplicationByStudentIdOrThrow(studentId);
+        boolean deleted = tutorApplicationService.deleteApplicationByStudentId(studentId);
+        
+        if (!deleted) {
+            return ResponseEntity.notFound().build();
+        }
+        
         return ResponseEntity.ok(GlobalResponse.success("Tutor application deleted successfully.", null));
     }
     

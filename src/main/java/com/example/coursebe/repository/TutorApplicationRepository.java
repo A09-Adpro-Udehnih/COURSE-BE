@@ -14,8 +14,8 @@ import java.util.UUID;
 @Repository
 public interface TutorApplicationRepository extends JpaRepository<TutorApplication, UUID> {
     List<TutorApplication> findByStudentId(UUID studentId);
-    Optional<TutorApplication> findTopByStudentIdOrderByCreatedAtDesc(UUID studentId);
-    List<TutorApplication> findByStatus(TutorApplication.Status status);
+    Optional<TutorApplication> findTopByStudentIdOrderByCreatedAtDesc(UUID studentId);    List<TutorApplication> findByStatus(TutorApplication.Status status);
+    boolean existsByStudentId(UUID studentId);
     boolean existsByStudentIdAndStatus(UUID studentId, TutorApplication.Status status);
     
     @Modifying
