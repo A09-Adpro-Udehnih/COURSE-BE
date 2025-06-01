@@ -53,14 +53,12 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         }
         return !tutorApplicationRepository.findByStudentId(studentId).isEmpty();
     }    
-    
-    @Override
+      @Override
     @Transactional
     public TutorApplication submitApplication(UUID studentId) {
         if (studentId == null) {
             throw new IllegalArgumentException("Student ID cannot be null");
-        }
-        if (hasAnyApplication(studentId)) {
+        }        if (hasAnyApplication(studentId)) {
             return null;
         }
         TutorApplication application = new TutorApplication(studentId);
