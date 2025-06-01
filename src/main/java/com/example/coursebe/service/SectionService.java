@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-interface SectionService {
+public interface SectionService {
     List<Section> getSectionsByCourseId(UUID courseId);
     Optional<Section> getSectionById(UUID id);
     Section createSection(UUID courseId, String title, Integer position);

@@ -17,6 +17,7 @@ public interface TutorApplicationService {
     CompletableFuture<Optional<TutorApplication>> getMostRecentApplicationByStudentIdAsync(UUID studentId);
     TutorApplication findByTutorId(UUID tutorId);
     boolean hasPendingApplication(UUID studentId);
+    boolean hasAnyApplication(UUID studentId);
     TutorApplication submitApplication(UUID studentId);
     CompletableFuture<TutorApplication> submitApplicationAsync(UUID studentId);
     Optional<TutorApplication> updateApplicationStatus(UUID id, TutorApplication.Status status);

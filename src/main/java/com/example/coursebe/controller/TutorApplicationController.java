@@ -19,19 +19,17 @@ public class TutorApplicationController {
 
     public TutorApplicationController(TutorApplicationService tutorApplicationService) {
         this.tutorApplicationService = tutorApplicationService;
-    }
-
-    // POST /tutors/registration - Sync implementation for JWT compatibility
+    }    // POST /tutors/registration - Sync implementation for JWT compatibility
     @PostMapping
     public ResponseEntity<?> registerAsTutor(Principal principal) {
         // Assume studentId is fetched from JWT principal
         UUID studentId = UUID.fromString(principal.getName());
         
-        if (tutorApplicationService.hasPendingApplication(studentId)) {
+        if (tutorApplicationService.hasAnyApplication(studentId)) {
             Map<String, Object> resp = new HashMap<>();
             resp.put("code", HttpStatus.BAD_REQUEST.value());
             resp.put("success", false);
-            resp.put("message", "You already have a pending tutor application.");
+            resp.put("message", "You already have a tutor application.");
             return ResponseEntity.badRequest().body(resp);
         }
         

@@ -100,9 +100,7 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         // Return the application directly or null if not found (to match CourseBuilder expectations)
         Optional<TutorApplication> optionalApplication = getMostRecentApplicationByStudentId(tutorId);
         return optionalApplication.orElse(null);
-    }
-
-    @Override
+    }    @Override
     public boolean hasPendingApplication(UUID studentId) {
         // Validate input
         if (studentId == null) {
@@ -112,8 +110,16 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
         return tutorApplicationRepository.existsByStudentIdAndStatus(
             studentId, TutorApplication.Status.PENDING);
     }
-
+    
     @Override
+    public boolean hasAnyApplication(UUID studentId) {
+        // Validate input
+        if (studentId == null) {
+            throw new IllegalArgumentException("Student ID cannot be null");
+        }
+        
+        return !tutorApplicationRepository.findByStudentId(studentId).isEmpty();
+    }    @Override
     @Transactional
     public TutorApplication submitApplication(UUID studentId) {
         // Validate input
@@ -121,8 +127,8 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
             throw new IllegalArgumentException("Student ID cannot be null");
         }
         
-        // Check if student already has a pending application
-        if (hasPendingApplication(studentId)) {
+        // Check if student already has any application (not just pending)
+        if (hasAnyApplication(studentId)) {
             return null;
         }
         
