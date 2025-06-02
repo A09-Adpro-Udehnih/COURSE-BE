@@ -23,8 +23,6 @@ public interface CourseService {
     List<String> getEnrolledStudents(UUID courseId);
     boolean deleteCourse(UUID id);
     public Optional<Course> updateCourse(UUID id, String name, String description, BigDecimal price, List<SectionDto> sectionDtos);
-
-        // Validation methods to move business logic from controller
     void validateTutorAccess(UUID tutorId);
     void validateCourseOwnership(UUID courseId, UUID tutorId);
 }

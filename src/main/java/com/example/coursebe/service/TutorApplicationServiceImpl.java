@@ -62,7 +62,6 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
     
     @Override
     @Async("tutorApplicationExecutor")
-    @Transactional
     public CompletableFuture<TutorApplication> submitApplicationAsync(@NotNull UUID studentId) {
         if (tutorApplicationRepository.existsByStudentId(studentId)) {
             return CompletableFuture.failedFuture(new ApplicationExistsException("You already have a tutor application."));

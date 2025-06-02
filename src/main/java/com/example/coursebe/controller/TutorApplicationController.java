@@ -20,7 +20,7 @@ public class TutorApplicationController {
     private final TutorApplicationService tutorApplicationService;    public TutorApplicationController(TutorApplicationService tutorApplicationService) {
         this.tutorApplicationService = tutorApplicationService;
     }
-    
+
     @PostMapping
     public CompletableFuture<ResponseEntity<GlobalResponse<TutorApplicationResponse>>> registerAsTutorAsync(Principal principal) {
         UUID studentId = AuthenticationUtil.parseUserId(principal);

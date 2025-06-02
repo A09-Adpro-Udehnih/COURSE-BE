@@ -288,31 +288,6 @@ public class CourseController {
                     ));            });
     }
 
-    // // POST /courses - Clean implementation with proper validation
-    // @PostMapping
-    // public ResponseEntity<ApiResponse<Map<String, Object>>> createCourse(@RequestBody CreateCourseRequest req, Principal principal) {
-    //     try {
-    //         UUID tutorId = AuthenticationUtil.parseUserId(principal);
-    //         courseService.validateTutorAccess(tutorId);
-            
-    //         Course course = courseService.createCourse(req.name, req.description, tutorId, req.price);
-            
-    //         Map<String, Object> data = new HashMap<>();
-    //         data.put("courseId", course.getId());
-            
-    //         return ResponseEntity.status(HttpStatus.CREATED)
-    //             .body(ApiResponse.success(HttpStatus.CREATED.value(), "Course created successfully.", data));
-    //     } catch (ResponseStatusException e) {
-    //         return ResponseEntity.status(e.getStatusCode())
-    //             .body(ApiResponse.error(e.getStatusCode().value(), e.getReason()));
-    //     } catch (Exception e) {
-    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-    //             .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error occurred while creating the course: " + e.getMessage()));
-    //     }
-    // }
-
-    // POST /courses/with-builder - Create course using builder pattern with validation
-    // @PostMapping("/with-builder")
     @PostMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> createCourseWithBuilder(@RequestBody CourseRequest courseRequest, Principal principal) {
         try {
@@ -358,7 +333,7 @@ public class CourseController {
         }
     }
 
-    // PUT /courses/{courseId} - Clean implementation with proper validation
+    // PUT /courses/{courseId}
     @PutMapping("/{courseId}")
     public ResponseEntity<ApiResponse<Course>> updateCourse(@PathVariable UUID courseId, @RequestBody UpdateCourseRequest req, Principal principal) {
         try {
