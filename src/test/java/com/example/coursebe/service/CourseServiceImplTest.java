@@ -405,46 +405,6 @@ public class CourseServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should create course")
-    void createCourse() {
-        // Given
-        String name = "New Course";
-        String description = "New Description";
-        BigDecimal price = new BigDecimal("79.99");
-
-        Course newCourse = new Course(name, description, tutorId, price);
-        when(courseRepository.save(any(Course.class))).thenReturn(newCourse);
-
-        // When
-        Course result = courseService.createCourse(name, description, tutorId, price);
-
-        // Then
-        assertNotNull(result);
-        assertEquals(name, result.getName());
-        assertEquals(description, result.getDescription());
-        assertEquals(tutorId, result.getTutorId());
-        assertEquals(price, result.getPrice());
-        verify(courseRepository).save(any(Course.class));
-    }
-
-    @Test
-    @DisplayName("Should throw exception when creating course with null name")
-    void createCourseWithNullName() {
-        // Given
-        String name = null;
-        String description = "Description";
-        BigDecimal price = new BigDecimal("79.99");
-
-        // When & Then
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            courseService.createCourse(name, description, tutorId, price);
-        });
-
-        assertEquals("Course name cannot be empty", exception.getMessage());
-        verify(courseRepository, never()).save(any(Course.class));
-    }
-
-    @Test
     @DisplayName("Should update course")
     void updateCourse() {
         // Given
@@ -481,94 +441,6 @@ public class CourseServiceImplTest {
         assertFalse(result.isPresent());
         verify(courseRepository).findById(nonExistentId);
         verify(courseRepository, never()).save(any(Course.class));
-    }
-
-    @Test
-    @DisplayName("Should delete course")
-    void deleteCourse() {
-        // Given
-        when(courseRepository.existsById(courseId)).thenReturn(true);
-
-        // When
-        boolean result = courseService.deleteCourse(courseId);
-
-        // Then
-        assertTrue(result);
-        verify(courseRepository).existsById(courseId);
-        verify(courseRepository).deleteById(courseId);
-    }
-
-    @Test
-    @DisplayName("Should return false when deleting non-existent course")
-    void deleteNonExistentCourse() {
-        // Given
-        UUID nonExistentId = UUID.randomUUID();
-        when(courseRepository.existsById(nonExistentId)).thenReturn(false);
-
-        // When
-        boolean result = courseService.deleteCourse(nonExistentId);
-
-        // Then
-        assertFalse(result);
-        verify(courseRepository).existsById(nonExistentId);
-        verify(courseRepository, never()).deleteById(any(UUID.class));
-    }
-
-    @Test
-    @DisplayName("Should throw exception when creating course with empty name")
-    void createCourseWithEmptyName() {
-        // Given
-        String name = "";
-        String description = "Description";
-        BigDecimal price = new BigDecimal("79.99");
-
-        // When & Then
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            courseService.createCourse(name, description, tutorId, price);
-        });
-
-        assertEquals("Course name cannot be empty", exception.getMessage());
-        verify(courseRepository, never()).save(any(Course.class));
-    }
-
-    @Test
-    @DisplayName("Should throw exception when creating course with null tutor ID")
-    void createCourseWithNullTutorId() {
-        // Given
-        String name = "Course Name";
-        String description = "Description";
-        BigDecimal price = new BigDecimal("79.99");
-
-        // When & Then
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            courseService.createCourse(name, description, null, price);
-        });
-
-        assertEquals("Tutor ID cannot be null", exception.getMessage());
-        verify(courseRepository, never()).save(any(Course.class));
-    }
-
-    @Test
-    @DisplayName("Should create course with null price")
-    void createCourseWithNullPrice() {
-        // Given
-        String name = "New Course";
-        String description = "New Description";
-        BigDecimal price = null;
-
-        Course newCourse = new Course(name, description, tutorId, BigDecimal.ZERO);
-        when(courseRepository.save(any(Course.class))).thenReturn(newCourse);
-
-        // When
-        Course result = courseService.createCourse(name, description, tutorId, price);
-
-        // Then
-        assertNotNull(result);
-        assertEquals(name, result.getName());
-        assertEquals(description, result.getDescription());
-        assertEquals(tutorId, result.getTutorId());
-        assertEquals(BigDecimal.ZERO, result.getPrice());
-        verify(courseRepository).save(any(Course.class));
     }
 
     @Test
@@ -610,19 +482,6 @@ public class CourseServiceImplTest {
         assertEquals(testCourse.getPrice(), result.get().getPrice());
         verify(courseRepository).findById(courseId);
         verify(courseRepository).save(any(Course.class));
-    }
-
-    @Test
-    @DisplayName("Should throw exception when deleting course with null ID")
-    void deleteCourseWithNullId() {
-        // When & Then
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            courseService.deleteCourse(null);
-        });
-
-        assertEquals("Course ID cannot be null", exception.getMessage());
-        verify(courseRepository, never()).existsById(any());
-        verify(courseRepository, never()).deleteById(any());
     }
 
     @Test

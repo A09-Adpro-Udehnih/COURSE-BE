@@ -31,10 +31,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Implementation of CourseService
- * Uses the Repository pattern to abstract data access
- */
 @Service
 public class CourseServiceImpl implements CourseService {
     private final CourseRepository courseRepository;
@@ -107,21 +103,6 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional
-    public Course createCourse(String name, String description, UUID tutorId, BigDecimal price) {
-        // Validate inputs
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Course name cannot be empty");
-        }
-        if (tutorId == null) {
-            throw new IllegalArgumentException("Tutor ID cannot be null");
-        }
-
-        Course course = new Course(name, description, tutorId, price);
-        return courseRepository.save(course);
-    }
-
-    @Override
-    @Transactional
     public Optional<Course> updateCourse(UUID id, String name, String description, BigDecimal price, List<SectionDto> sectionDtos) {
         if (id == null) {
             throw new IllegalArgumentException("Course ID cannot be null");
@@ -134,7 +115,6 @@ public class CourseServiceImpl implements CourseService {
 
         Course course = optionalCourse.get();
 
-        // Update basic course details
         if (name != null && !name.trim().isEmpty()) {
             course.setName(name);
         }
@@ -145,103 +125,35 @@ public class CourseServiceImpl implements CourseService {
             course.setPrice(price);
         }
 
-        // Handle sections and articles
         if (sectionDtos != null) {
-            updateSectionsAndArticles(course, sectionDtos);
+            course.getSections().clear();
+            for (SectionDto sectionDto : sectionDtos) {
+                Section section = new Section(sectionDto.getTitle(), sectionDto.getPosition());
+                section.setCourse(course);
+                
+                if (sectionDto.getArticles() != null) {
+                    for (com.example.coursebe.dto.ArticleDto articleDto : sectionDto.getArticles()) {
+                        Article article = new Article(articleDto.getTitle(), articleDto.getContent(), articleDto.getPosition());
+                        article.setSection(section);
+                        section.getArticles().add(article);
+                    }
+                }
+                course.getSections().add(section);
+            }
         }
 
         Course updatedCourse = courseRepository.save(course);
         return Optional.of(updatedCourse);
-    }    private void updateSectionsAndArticles(Course course, List<SectionDto> sectionDtos) {
-        Map<UUID, Section> existingSectionsMap = course.getSections().stream()
-                .collect(Collectors.toMap(Section::getId, s -> s));
-        List<Section> updatedSections = new ArrayList<>();
-
-        for (SectionDto sectionDto : sectionDtos) {
-            Section section;
-            if (sectionDto.getId() == null) { // New section
-                section = new Section(sectionDto.getTitle(), sectionDto.getPosition());
-                section.setCourse(course);
-            } else { // Existing section
-                section = existingSectionsMap.remove(sectionDto.getId());
-                if (section == null) {
-                    section = new Section(sectionDto.getTitle(), sectionDto.getPosition());
-                    section.setCourse(course);
-                }
-                section.setTitle(sectionDto.getTitle());
-                section.setPosition(sectionDto.getPosition());
-            }
-
-            if (sectionDto.getArticles() != null) {
-                updateArticles(section, sectionDto.getArticles());
-            }
-            updatedSections.add(section); // Add new or updated section
-        }
-
-        // Remove sections that were not in the DTO list (orphanRemoval=true will handle DB deletion)
-        // Clear and add all ensures correct associations and JPA lifecycle management
-        course.getSections().clear();
-        course.getSections().addAll(updatedSections);
-
-        // Explicitly delete sections that were in existingSectionsMap but not in sectionDtos
-        // This is needed if orphanRemoval=true is not sufficient or if you want to manage it explicitly
-        for (Section sectionToRemove : existingSectionsMap.values()) {
-            sectionRepository.delete(sectionToRemove);
-        }
-    }    private void updateArticles(Section section, List<com.example.coursebe.dto.ArticleDto> articleDtos) {
-        Map<UUID, Article> existingArticlesMap = section.getArticles().stream()
-                .collect(Collectors.toMap(Article::getId, a -> a));
-        List<Article> updatedArticles = new ArrayList<>();
-
-        for (com.example.coursebe.dto.ArticleDto articleDto : articleDtos) {
-            Article article;
-            if (articleDto.getId() == null) { // New article
-                article = new Article(articleDto.getTitle(), articleDto.getContent(), articleDto.getPosition());
-                article.setSection(section);
-            } else { // Existing article
-                article = existingArticlesMap.remove(articleDto.getId());
-                if (article == null) {
-                    article = new Article(articleDto.getTitle(), articleDto.getContent(), articleDto.getPosition());
-                    article.setSection(section);
-                }
-                article.setTitle(articleDto.getTitle());
-                article.setContent(articleDto.getContent());
-                article.setPosition(articleDto.getPosition());
-            }
-            updatedArticles.add(article);
-        }
-
-        // Clear and add all ensures correct associations and JPA lifecycle management
-        section.getArticles().clear();
-        section.getArticles().addAll(updatedArticles);
-
-        // Explicitly delete articles that were in existingArticlesMap but not in articleDtos
-        // This is needed if orphanRemoval=true is not sufficient or if you want to manage it explicitly
-         for (Article articleToRemove : existingArticlesMap.values()) {
-            articleRepository.delete(articleToRemove);
-        }
-    }
-
-    @Override
-    @Transactional
-    public boolean deleteCourse(UUID id) {
-        // Validate inputs
-        if (id == null) {
-            throw new IllegalArgumentException("Course ID cannot be null");
-        }
-
-        // Check if course exists
-        if (courseRepository.existsById(id)) {
-            courseRepository.deleteById(id);
-            return true;
-        }
-          return false;
     }
 
     @Override
     @Transactional
     public void deleteCourseWithValidation(UUID courseId, UUID tutorId) {
-        validateTutorAccess(tutorId);
+        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
+        if (appOpt.isEmpty() || appOpt.get().getStatus() != TutorApplication.Status.ACCEPTED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
+                "You are not allowed to perform this action. Tutor application must be ACCEPTED.");
+        }
 
         Course course = courseRepository.findById(courseId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found."));
@@ -252,8 +164,31 @@ public class CourseServiceImpl implements CourseService {
         }
 
         courseRepository.delete(course);
-    }    
+    }
 
+    @Override
+    @Transactional
+    public List<String> getEnrolledStudentsWithValidation(UUID courseId, UUID tutorId) {
+        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
+        if (appOpt.isEmpty() || appOpt.get().getStatus() != TutorApplication.Status.ACCEPTED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
+                "You are not allowed to perform this action. Tutor application must be ACCEPTED.");
+        }
+        
+        Course course = courseRepository.findById(courseId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found."));
+        
+        if (!course.getTutorId().equals(tutorId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
+                "You are not allowed to view students. Only the owner can view.");
+        }
+        
+        List<Enrollment> enrollments = enrollmentRepository.findByCourse(course);
+        
+        return enrollments.stream()
+            .map(enrollment -> enrollment.getStudentId().toString())
+            .collect(Collectors.toList());
+    }
 
     @Override
     public List<String> getEnrolledStudents(UUID courseId) {
@@ -268,55 +203,31 @@ public class CourseServiceImpl implements CourseService {
         return enrollments.stream()
                 .map(enrollment -> enrollment.getStudentId().toString())
                 .collect(Collectors.toList());
-    }
-    
-    @Override
-    @Transactional
-    public List<String> getEnrolledStudentsWithValidation(UUID courseId, UUID tutorId) {
-        validateTutorAccess(tutorId);
-        validateCourseOwnership(courseId, tutorId);
-        
-        return getEnrolledStudents(courseId);
-    }
-
-    @Override
+    }    @Override
     @Transactional
     public Course createCourseWithBuilder(CourseRequest courseRequest) {
-        Course course = courseBuilder.buildEntity(courseRequest);
+        Course course = courseBuilder
+            .name(courseRequest.getName())
+            .description(courseRequest.getDescription())
+            .tutorId(courseRequest.getTutorId())
+            .price(courseRequest.getPrice())
+            .buildEntity();
         return courseRepository.save(course);
     }
 
     @Override
     public void validateTutorAccess(UUID tutorId) {
-        if (tutorId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tutor ID is required");
-        }
-        
-        Optional<TutorApplication> tutorApplicationOpt = tutorApplicationService.findByTutorId(tutorId);
-        if (tutorApplicationOpt.isEmpty()) {
+        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
+        if (appOpt.isEmpty() || appOpt.get().getStatus() != TutorApplication.Status.ACCEPTED) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
-                "No tutor application found. You must be an approved tutor to create courses.");
-        }
-        
-        TutorApplication tutorApplication = tutorApplicationOpt.get();
-        if (tutorApplication.getStatus() != TutorApplication.Status.ACCEPTED) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                String.format("Cannot create course. Your tutor status is %s, but must be ACCEPTED to create courses.",
-                             tutorApplication.getStatus()));
+                "You are not allowed to perform this action. Tutor application must be ACCEPTED.");
         }
     }
 
     @Override
     public void validateCourseOwnership(UUID courseId, UUID tutorId) {
-        if (courseId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course ID is required");
-        }
-        if (tutorId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tutor ID is required");
-        }
-        
         Course course = courseRepository.findById(courseId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found."));
         
         if (!course.getTutorId().equals(tutorId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,

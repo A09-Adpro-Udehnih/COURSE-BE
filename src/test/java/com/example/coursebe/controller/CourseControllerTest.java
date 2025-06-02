@@ -807,68 +807,6 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /courses/{courseId} - success (owner & ACCEPTED)")
-    void deleteCourse_success() {
-        UUID courseId = UUID.randomUUID();
-        TutorApplication app = new TutorApplication(tutorId);
-        app.setStatus(TutorApplication.Status.ACCEPTED);
-        Course course = new Course("Course 1", "Desc", tutorId, new BigDecimal("10000"));
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
-        when(courseService.getCourseById(courseId)).thenReturn(Optional.of(course));
-        when(courseService.deleteCourse(courseId)).thenReturn(true);
-
-        ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(200, response.getStatusCode().value());
-        assertTrue(response.getBody().toString().contains("deleted successfully"));
-        verify(courseService).deleteCourse(courseId);
-    }
-
-    @Test
-    @DisplayName("DELETE /courses/{courseId} - forbidden (not ACCEPTED)")
-    void deleteCourse_forbidden_notAccepted() {
-        UUID courseId = UUID.randomUUID();
-        TutorApplication app = new TutorApplication(tutorId);
-        app.setStatus(TutorApplication.Status.PENDING);
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
-
-        ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(403, response.getStatusCode().value());
-        assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
-        verify(courseService, never()).deleteCourse(any());
-    }
-
-    @Test
-    @DisplayName("DELETE /courses/{courseId} - forbidden (not owner)")
-    void deleteCourse_forbidden_notOwner() {
-        UUID courseId = UUID.randomUUID();
-        TutorApplication app = new TutorApplication(tutorId);
-        app.setStatus(TutorApplication.Status.ACCEPTED);
-        Course course = new Course("Course 1", "Desc", UUID.randomUUID(), new BigDecimal("10000")); // different tutorId
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
-        when(courseService.getCourseById(courseId)).thenReturn(Optional.of(course));
-
-        ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(403, response.getStatusCode().value());
-        assertTrue(response.getBody().toString().contains("Only the owner can delete"));
-        verify(courseService, never()).deleteCourse(any());
-    }
-
-    @Test
-    @DisplayName("DELETE /courses/{courseId} - not found")
-    void deleteCourse_notFound() {
-        UUID courseId = UUID.randomUUID();
-        TutorApplication app = new TutorApplication(tutorId);
-        app.setStatus(TutorApplication.Status.ACCEPTED);
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
-        when(courseService.getCourseById(courseId)).thenReturn(Optional.empty());
-
-        ResponseEntity<?> response = courseController.deleteCourse(courseId, principal);
-        assertEquals(403, response.getStatusCode().value());
-        assertTrue(response.getBody().toString().contains("Only the owner can delete"));
-        verify(courseService, never()).deleteCourse(any());
-    }
-
-    @Test
     @DisplayName("GET /courses/{courseId}/students - success (owner & ACCEPTED)")
     void getEnrolledStudents_success() {
         UUID courseId = UUID.randomUUID();
