@@ -104,7 +104,9 @@ public class ReviewController {
             @Valid @RequestBody ReviewUpdateRequest request
     ) {
         Optional<Review> updated = reviewService.updateReview(id, request.getRating(), request.getComment());
-        return updated.map(r -> ResponseEntity.ok(GlobalResponse.<ReviewResponse>builder()
+        return updated.map(r -> ResponseEntity.ok(
+                        GlobalResponse.<ReviewResponse>
+                        builder()
                         .code(org.springframework.http.HttpStatus.OK)
                         .success(true)
                         .message("Review updated successfully.")
