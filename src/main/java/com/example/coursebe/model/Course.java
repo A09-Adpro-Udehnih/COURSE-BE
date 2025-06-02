@@ -88,17 +88,6 @@ public class Course {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Section management methods
-    public void addSection(Section section) {
-        sections.add(section);
-        section.setCourse(this);
-    }
-
-    public void removeSection(Section section) {
-        sections.remove(section);
-        section.setCourse(null);
-    }
-
     // Getters and Setters
     public UUID getId() {
         return id;

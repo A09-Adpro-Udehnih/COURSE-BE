@@ -19,7 +19,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.example.coursebe.model.Course;
 import com.example.coursebe.service.CourseService;
-import com.example.coursebe.dto.CreateCourseRequest;
 import com.example.coursebe.dto.builder.CourseRequest;
 
 import java.security.Principal;
@@ -342,13 +341,9 @@ public class CourseController {
             courseService.validateCourseOwnership(courseId, tutorId);
             
             Optional<Course> updatedCourseOpt = courseService.updateCourse(courseId, req.getName(), req.getDescription(), req.getPrice(), req.getSections());
-            
-            if (updatedCourseOpt.isPresent()) {
-                return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Course updated successfully.", updatedCourseOpt.get()));
-            } else {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Failed to update course."));
-            }
+
+            return updatedCourseOpt.map(course -> ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Course updated successfully.", course))).orElseGet(() -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Failed to update course.")));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode())
                 .body(ApiResponse.error(e.getStatusCode().value(), e.getReason()));

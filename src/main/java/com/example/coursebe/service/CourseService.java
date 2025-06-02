@@ -20,8 +20,7 @@ public interface CourseService {
     Page<Course> searchEnrolledCourses(UUID userId, String type, String keyword, Pageable pageable);    Course createCourseWithBuilder(CourseRequest courseRequest);
     void deleteCourseWithValidation(UUID courseId, UUID tutorId);
     List<String> getEnrolledStudents(UUID courseId);
-    List<String> getEnrolledStudentsWithValidation(UUID courseId, UUID tutorId);
-    public Optional<Course> updateCourse(UUID id, String name, String description, BigDecimal price, List<SectionDto> sectionDtos);
+    Optional<Course> updateCourse(UUID id, String name, String description, BigDecimal price, List<SectionDto> sectionDtos);
     void validateTutorAccess(UUID tutorId);
     void validateCourseOwnership(UUID courseId, UUID tutorId);
 }

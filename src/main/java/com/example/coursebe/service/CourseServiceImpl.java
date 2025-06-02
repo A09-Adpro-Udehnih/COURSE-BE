@@ -21,11 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.Map;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -111,19 +109,20 @@ public class CourseServiceImpl implements CourseService {
         Optional<Course> optionalCourse = courseRepository.findById(id);
         if (optionalCourse.isEmpty()) {
             return Optional.empty();
-        }
-
-        Course course = optionalCourse.get();
-
-        if (name != null && !name.trim().isEmpty()) {
-            course.setName(name);
-        }
-        if (description != null) {
-            course.setDescription(description);
-        }
-        if (price != null) {
-            course.setPrice(price);
-        }
+        }        Course course = optionalCourse.get();
+        
+        Optional.ofNullable(name)
+            .filter(StringUtils::hasText)
+            .map(String::trim)
+            .ifPresent(course::setName);
+            
+        Optional.ofNullable(description)
+            .filter(StringUtils::hasText)
+            .map(String::trim)
+            .ifPresent(course::setDescription);
+            
+        Optional.ofNullable(price)
+            .ifPresent(course::setPrice);
 
         if (sectionDtos != null) {
             course.getSections().clear();
@@ -167,30 +166,6 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @Transactional
-    public List<String> getEnrolledStudentsWithValidation(UUID courseId, UUID tutorId) {
-        var appOpt = tutorApplicationService.getMostRecentApplicationByStudentId(tutorId);
-        if (appOpt.isEmpty() || appOpt.get().getStatus() != TutorApplication.Status.ACCEPTED) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
-                "You are not allowed to perform this action. Tutor application must be ACCEPTED.");
-        }
-        
-        Course course = courseRepository.findById(courseId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found."));
-        
-        if (!course.getTutorId().equals(tutorId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
-                "You are not allowed to view students. Only the owner can view.");
-        }
-        
-        List<Enrollment> enrollments = enrollmentRepository.findByCourse(course);
-        
-        return enrollments.stream()
-            .map(enrollment -> enrollment.getStudentId().toString())
-            .collect(Collectors.toList());
-    }
-
-    @Override
     public List<String> getEnrolledStudents(UUID courseId) {
         Optional<Course> courseOpt = courseRepository.findById(courseId);
         if (courseOpt.isEmpty()) {
@@ -203,7 +178,9 @@ public class CourseServiceImpl implements CourseService {
         return enrollments.stream()
                 .map(enrollment -> enrollment.getStudentId().toString())
                 .collect(Collectors.toList());
-    }    @Override
+    }    
+    
+    @Override
     @Transactional
     public Course createCourseWithBuilder(CourseRequest courseRequest) {
         Course course = courseBuilder

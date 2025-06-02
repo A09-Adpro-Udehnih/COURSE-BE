@@ -77,27 +77,6 @@ public class CourseTest {
     }
     
     @Test
-    void testAddSection() {
-        Section section = new Section("Test Section", 1);
-        course.addSection(section);
-        
-        assertEquals(1, course.getSections().size());
-        assertTrue(course.getSections().contains(section));
-        assertEquals(course, section.getCourse());
-    }
-    
-    @Test
-    void testRemoveSection() {
-        Section section = new Section("Test Section", 1);
-        course.addSection(section);
-        assertEquals(1, course.getSections().size());
-        
-        course.removeSection(section);
-        assertEquals(0, course.getSections().size());
-        assertNull(section.getCourse());
-    }
-    
-    @Test
     void testSetters() {
         String newName = "Updated Course Name";
         course.setName(newName);
