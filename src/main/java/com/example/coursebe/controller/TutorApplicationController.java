@@ -7,6 +7,8 @@ import com.example.coursebe.model.TutorApplication;
 import com.example.coursebe.service.TutorApplicationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.example.coursebe.util.AuthenticationUtil;
+
 
 import java.security.Principal;
 import java.util.UUID;
@@ -17,14 +19,11 @@ import java.util.concurrent.CompletableFuture;
 public class TutorApplicationController {
     private final TutorApplicationService tutorApplicationService;    public TutorApplicationController(TutorApplicationService tutorApplicationService) {
         this.tutorApplicationService = tutorApplicationService;
-    }    @PostMapping
-    public ResponseEntity<GlobalResponse<TutorApplicationResponse>> registerAsTutor(Principal principal) {
-        UUID studentId = parseStudentId(principal);
-        TutorApplication app = tutorApplicationService.submitApplication(studentId);
-        return ResponseEntity.ok(GlobalResponse.success("Tutor application submitted.", toResponse(app)));
-    }    @PostMapping("/async")
+    }
+    
+    @PostMapping
     public CompletableFuture<ResponseEntity<GlobalResponse<TutorApplicationResponse>>> registerAsTutorAsync(Principal principal) {
-        UUID studentId = parseStudentId(principal);
+        UUID studentId = AuthenticationUtil.parseUserId(principal);
         return tutorApplicationService.submitApplicationAsync(studentId)
                 .thenApply(app -> ResponseEntity.ok(GlobalResponse.success("Tutor application submitted asynchronously.", toResponse(app))))
                 .exceptionally(ex -> ResponseEntity.badRequest().body(GlobalResponse.badRequest(ex.getMessage())));
@@ -32,17 +31,19 @@ public class TutorApplicationController {
 
     @GetMapping
     public ResponseEntity<GlobalResponse<TutorApplicationStatusResponse>> getTutorRegistrationStatus(Principal principal) {
-        UUID studentId = parseStudentId(principal);
+        UUID studentId = AuthenticationUtil.parseUserId(principal);
         TutorApplication app = tutorApplicationService.getMostRecentApplicationByStudentIdOrThrow(studentId);
-        
-        return ResponseEntity.ok(GlobalResponse.success("Tutor application status retrieved successfully.", 
+
+        return ResponseEntity.ok(GlobalResponse.success("Tutor application status retrieved successfully.",
                 TutorApplicationStatusResponse.builder()
                         .status(app.getStatus().name())
                         .tutorApplicationId(app.getId())
                         .build()));
-    }    @DeleteMapping
+    }
+
+    @DeleteMapping
     public ResponseEntity<GlobalResponse<Void>> deleteTutorRegistration(Principal principal) {
-        UUID studentId = parseStudentId(principal);
+        UUID studentId = AuthenticationUtil.parseUserId(principal);
         boolean deleted = tutorApplicationService.deleteApplicationByStudentId(studentId);
         
         if (!deleted) {
@@ -50,14 +51,6 @@ public class TutorApplicationController {
         }
         
         return ResponseEntity.ok(GlobalResponse.success("Tutor application deleted successfully.", null));
-    }
-    
-    private UUID parseStudentId(Principal principal) {
-        try {
-            return UUID.fromString(principal.getName());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid student ID format: " + principal.getName(), e);
-        }
     }
     
     private TutorApplicationResponse toResponse(TutorApplication application) {
