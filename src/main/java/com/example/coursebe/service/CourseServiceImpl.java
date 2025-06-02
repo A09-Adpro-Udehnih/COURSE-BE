@@ -252,7 +252,9 @@ public class CourseServiceImpl implements CourseService {
         }
 
         courseRepository.delete(course);
-    }    @Override
+    }    
+    
+    @Override
     public List<String> getEnrolledStudents(UUID courseId) {
         Optional<Course> courseOpt = courseRepository.findById(courseId);
         if (courseOpt.isEmpty()) {
@@ -265,11 +267,13 @@ public class CourseServiceImpl implements CourseService {
         return enrollments.stream()
                 .map(enrollment -> enrollment.getStudentId().toString())
                 .collect(Collectors.toList());
-    }
-
+    }    
+    
     @Override
+    @Transactional
     public Course createCourseWithBuilder(CourseRequest courseRequest) {
-        return courseBuilder.buildEntity(courseRequest);
+        Course course = courseBuilder.buildEntity(courseRequest);
+        return courseRepository.save(course);
     }
 
     @Override
