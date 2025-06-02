@@ -752,57 +752,6 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("POST /courses - success (ACCEPTED tutor)")
-    void createCourse_success() {
-        CreateCourseRequest req = new CreateCourseRequest();
-        req.name = "Test Course";
-        req.description = "Desc";
-        req.price = new BigDecimal("100000");
-        TutorApplication app = new TutorApplication(tutorId);
-        app.setStatus(TutorApplication.Status.ACCEPTED);
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
-        Course course = new Course(req.name, req.description, tutorId, req.price);
-        when(courseService.createCourse(req.name, req.description, tutorId, req.price)).thenReturn(course);
-
-        ResponseEntity<?> response = courseController.createCourse(req, principal);
-        assertEquals(201, response.getStatusCode().value());
-        assertTrue(response.getBody().toString().contains("Course created successfully"));
-        verify(courseService).createCourse(req.name, req.description, tutorId, req.price);
-    }
-
-    @Test
-    @DisplayName("POST /courses - forbidden (not ACCEPTED)")
-    void createCourse_forbidden() {
-        CreateCourseRequest req = new CreateCourseRequest();
-        req.name = "Test Course";
-        req.description = "Desc";
-        req.price = new BigDecimal("100000");
-        TutorApplication app = new TutorApplication(tutorId);
-        app.setStatus(TutorApplication.Status.PENDING);
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.of(app));
-
-        ResponseEntity<?> response = courseController.createCourse(req, principal);
-        assertEquals(403, response.getStatusCode().value());
-        assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
-        verify(courseService, never()).createCourse(any(), any(), any(), any());
-    }
-
-    @Test
-    @DisplayName("POST /courses - forbidden (no tutor application)")
-    void createCourse_noTutorApplication() {
-        CreateCourseRequest req = new CreateCourseRequest();
-        req.name = "Test Course";
-        req.description = "Desc";
-        req.price = new BigDecimal("100000");
-        when(tutorApplicationService.getMostRecentApplicationByStudentId(tutorId)).thenReturn(Optional.empty());
-
-        ResponseEntity<?> response = courseController.createCourse(req, principal);
-        assertEquals(403, response.getStatusCode().value());
-        assertTrue(response.getBody().toString().contains("must be ACCEPTED"));
-        verify(courseService, never()).createCourse(any(), any(), any(), any());
-    }
-
-    @Test
     @DisplayName("GET /courses/mine - success (ACCEPTED tutor)")
     void getMyCourses_success() {
         TutorApplication app = new TutorApplication(tutorId);

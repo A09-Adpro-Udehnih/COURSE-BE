@@ -253,7 +253,8 @@ public class CourseServiceImpl implements CourseService {
 
         courseRepository.delete(course);
     }    
-    
+
+
     @Override
     public List<String> getEnrolledStudents(UUID courseId) {
         Optional<Course> courseOpt = courseRepository.findById(courseId);
@@ -267,8 +268,17 @@ public class CourseServiceImpl implements CourseService {
         return enrollments.stream()
                 .map(enrollment -> enrollment.getStudentId().toString())
                 .collect(Collectors.toList());
-    }    
+    }
     
+    @Override
+    @Transactional
+    public List<String> getEnrolledStudentsWithValidation(UUID courseId, UUID tutorId) {
+        validateTutorAccess(tutorId);
+        validateCourseOwnership(courseId, tutorId);
+        
+        return getEnrolledStudents(courseId);
+    }
+
     @Override
     @Transactional
     public Course createCourseWithBuilder(CourseRequest courseRequest) {
@@ -291,7 +301,7 @@ public class CourseServiceImpl implements CourseService {
         TutorApplication tutorApplication = tutorApplicationOpt.get();
         if (tutorApplication.getStatus() != TutorApplication.Status.ACCEPTED) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                String.format("Cannot create course. Your tutor status is %s, but must be ACCEPTED to create courses.", 
+                String.format("Cannot create course. Your tutor status is %s, but must be ACCEPTED to create courses.",
                              tutorApplication.getStatus()));
         }
     }

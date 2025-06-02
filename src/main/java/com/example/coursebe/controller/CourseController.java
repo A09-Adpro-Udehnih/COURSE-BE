@@ -363,18 +363,9 @@ public class CourseController {
     public ResponseEntity<ApiResponse<Void>> deleteCourse(@PathVariable UUID courseId, Principal principal) {
         try {
             UUID tutorId = AuthenticationUtil.parseUserId(principal);
-            // courseService.validateTutorAccess(tutorId); // Already handled in deleteCourseWithValidation
-            // courseService.validateCourseOwnership(courseId, tutorId); // Already handled in deleteCourseWithValidation
-            
-            // boolean deleted = courseService.deleteCourse(courseId); // Old call
-            courseService.deleteCourseWithValidation(courseId, tutorId); // New call
+            courseService.deleteCourseWithValidation(courseId, tutorId);
 
-            // if (deleted) {
             return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Course deleted successfully.", null));
-            // } else {
-            //     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            //         .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), "Course not found or could not be deleted."));
-            // }
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode())
                 .body(ApiResponse.error(e.getStatusCode().value(), e.getReason()));

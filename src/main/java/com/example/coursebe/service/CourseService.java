@@ -18,9 +18,9 @@ public interface CourseService {
     Page<Course> searchCourses(String type, String keyword, Pageable pageable);
     Page<Course> getEnrolledCourses(UUID userId, Pageable pageable);
     Page<Course> searchEnrolledCourses(UUID userId, String type, String keyword, Pageable pageable);    Course createCourse(String name, String description, UUID tutorId, BigDecimal price);
-    Course createCourseWithBuilder(CourseRequest courseRequest);
-    void deleteCourseWithValidation(UUID courseId, UUID tutorId);
+    Course createCourseWithBuilder(CourseRequest courseRequest);    void deleteCourseWithValidation(UUID courseId, UUID tutorId);
     List<String> getEnrolledStudents(UUID courseId);
+    List<String> getEnrolledStudentsWithValidation(UUID courseId, UUID tutorId);
     boolean deleteCourse(UUID id);
     public Optional<Course> updateCourse(UUID id, String name, String description, BigDecimal price, List<SectionDto> sectionDtos);
     void validateTutorAccess(UUID tutorId);

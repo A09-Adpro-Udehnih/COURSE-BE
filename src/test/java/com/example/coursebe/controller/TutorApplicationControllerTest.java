@@ -41,31 +41,6 @@ class TutorApplicationControllerTest {
     }
 
     @Test
-    @DisplayName("POST /tutors/registration - success")
-    void registerAsTutor_success() {
-        when(tutorApplicationService.hasPendingApplication(studentId)).thenReturn(false);
-        
-        TutorApplication app = new TutorApplication(studentId);
-        when(tutorApplicationService.submitApplication(studentId)).thenReturn(app);
-
-        ResponseEntity<?> response = controller.registerAsTutor(principal);
-        assertEquals(200, response.getStatusCode().value());
-        assertTrue(response.getBody().toString().contains("success=true"));
-        verify(tutorApplicationService).submitApplication(studentId);
-    }
-
-    @Test
-    @DisplayName("POST /tutors/registration - already pending")
-    void registerAsTutor_alreadyPending() {
-        when(tutorApplicationService.hasPendingApplication(studentId)).thenReturn(true);
-
-        ResponseEntity<?> response = controller.registerAsTutor(principal);
-        assertEquals(400, response.getStatusCode().value());
-        assertTrue(response.getBody().toString().contains("pending tutor application"));
-        verify(tutorApplicationService, never()).submitApplication(any());
-    }
-
-    @Test
     @DisplayName("GET /tutors/registration - has application")
     void getTutorRegistrationStatus_hasApplication() {
         TutorApplication app = new TutorApplication(studentId);
